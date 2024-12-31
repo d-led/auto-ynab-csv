@@ -6,17 +6,16 @@ using AutoYnabCsv.Exporters;
 namespace Tests;
 
 [TestClass]
+[UseReporter(typeof(DiffReporter))]
 public class YnabCsvExporterTest
 {
     [TestMethod]
-    [UseReporter(typeof(DiffReporter))]
     public void ExportingEmptyCsv()
     {
         Approvals.Verify(YnabCsvExporter.Export([]));
     }
 
     [TestMethod]
-    [UseReporter(typeof(DiffReporter))]
     public void ExportingNonEmptyCsv()
     {
         Approvals.Verify(YnabCsvExporter.Export([

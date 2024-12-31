@@ -1,0 +1,4 @@
+﻿Date,Payee,Memo,Inflow,Outflow
+2024-12-12,Some bakery,,0,5.95
+2024-12-13,Some sushi place,,0,14
+2024-12-27,Somebody,Earnings,1234.54,0

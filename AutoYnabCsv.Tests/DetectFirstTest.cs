@@ -7,11 +7,11 @@ namespace Tests;
 public sealed class DetectFirstTest
 {
     [TestMethod]
-    [DataRow("n26-download.csv", "n26")]
-    [DataRow("dkb-giro.csv", "dkb.giro")]
+    [DataRow("n26-download.csv", KnownSources.N26Source)]
+    [DataRow("dkb-giro.csv", KnownSources.DkbGiroSource)]
     public void DetectKnownCsv(string inputFilename, string expectedSourceType)
     {
-        var input = SampleTextOf(inputFilename);
+        var input = TestHelpers.SampleTextOf(inputFilename);
         var detection = DetectFirst.Instance.TryDetect(input);
         Assert.IsTrue(detection.Successful);
         Assert.AreEqual(expectedSourceType, detection.SourceType);
@@ -20,15 +20,7 @@ public sealed class DetectFirstTest
     [TestMethod]
     public void DetectUnknownCsv()
     {
-        var input = SampleTextOf("unknown.csv");
+        var input = TestHelpers.SampleTextOf("unknown.csv");
         Assert.AreEqual(KnownSources.None, DetectFirst.Instance.TryDetect(input));
-    }
-
-    private const string SamplesDir = "../../../../data/samples/";
-
-    private static string SampleTextOf(string sample)
-    {
-        var input = File.ReadAllText(Path.Join(SamplesDir, sample));
-        return input;
     }
 }

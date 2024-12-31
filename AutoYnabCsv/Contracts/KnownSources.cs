@@ -3,6 +3,8 @@ namespace AutoYnabCsv.Contracts;
 public static class KnownSources
 {
     public static readonly Detection None = new(sourceType: "none", successful: false);
-    public static readonly Detection N26 = new(sourceType: "n26", successful: true);
-    public static readonly Detection DkbGiro = new(sourceType: "dkb.giro", successful: true);
+    public const string N26Source = "n26";
+    public static readonly Detection N26 = new(sourceType: N26Source, successful: true);
+    public const string DkbGiroSource = "dkb.giro";
+    public static readonly Detection DkbGiro = new(sourceType: DkbGiroSource, successful: true);
 }

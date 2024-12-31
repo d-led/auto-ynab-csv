@@ -24,7 +24,9 @@ public record YnabImportEntry(
     [Name("Memo")]
     public string Memo { get; set; } = Memo;
 
-    [Name("Inflow")] public decimal Inflow { get; set; } = Inflow;
+    [Name("Inflow")]
+    public decimal Inflow { get; set; } = Inflow;
 
-    [Name("Outflow")] public decimal Outflow { get; set; } = Outflow;
+    [Name("Outflow")]
+    public decimal Outflow { get; set; } = Outflow;
 }

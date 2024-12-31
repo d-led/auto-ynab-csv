@@ -1,4 +1,6 @@
-﻿using AutoYnabCsv.Detectors;
+﻿using AutoYnabCsv.Converters;
+using AutoYnabCsv.Detectors;
+using AutoYnabCsv.Exporters;
 using ConsoleAppFramework;
 
 namespace AutoYnabCsv.App;
@@ -7,11 +9,36 @@ internal static class Program
 {
     private static void Main(string[] args)
     {
+        if (args.Length == 1)
+        {
+            ConvertToConsole(args[0]);
+            return;
+        }
         var app = ConsoleApp.Create();
 
         app.Add("detect", DetectCommand);
 
         app.Run(args);
+    }
+
+    private static void ConvertToConsole(string path)
+    {
+        try
+        {
+            Console.WriteLine(ConvertFile(path));
+        } 
+        catch (FileNotFoundException)
+        {
+            SetExitCode(1);
+            Console.WriteLine($"File not found: {path}");
+        }
+    }
+
+    private static string ConvertFile(string path)
+    {
+        var text = File.ReadAllText(path);
+        var conversion = DetectAndConvert.Instance.Convert(text);
+        return YnabCsvExporter.Export(conversion);
     }
 
     private static void DetectCommand(string input)
