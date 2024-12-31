@@ -29,7 +29,7 @@ public class DkbGiroConverter : IConvertInput
                 .ToList()
                 .Select(entry => new YnabImportEntry(
                     Date: entry.BookingDate,
-                    Payee: entry.Payer,
+                    Payee: entry.Payee,
                     Memo: entry.Purpose,
                     Inflow: entry.Amount > 0 ? Math.Abs(entry.Amount) : 0,
                     Outflow: entry.Amount < 0 ? Math.Abs(entry.Amount) : 0))
