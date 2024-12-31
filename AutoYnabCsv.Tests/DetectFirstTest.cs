@@ -6,8 +6,6 @@ namespace Tests;
 [TestClass]
 public sealed class DetectFirstTest
 {
-    const string SamplesDir = "../../../../data/samples/";
-
     [TestMethod]
     [DataRow("n26-download.csv", "n26")]
     [DataRow("dkb-giro.csv", "dkb.giro")]
@@ -25,6 +23,8 @@ public sealed class DetectFirstTest
         var input = SampleTextOf("unknown.csv");
         Assert.AreEqual(KnownSources.None, DetectFirst.Instance.TryDetect(input));
     }
+
+    private const string SamplesDir = "../../../../data/samples/";
 
     private static string SampleTextOf(string sample)
     {
