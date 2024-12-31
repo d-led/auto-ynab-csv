@@ -12,6 +12,7 @@
         <LangVersion>latest</LangVersion>
         <PublishSingleFile>true</PublishSingleFile>
         <RootNamespace>AutoYnabCsv.App</RootNamespace>
+        <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     </PropertyGroup>
 
     <ItemGroup>
