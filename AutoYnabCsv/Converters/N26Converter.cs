@@ -14,7 +14,7 @@ public class N26Converter : IConvertInput
             csv.GetRecords<N26ExportEntry>()
                 .ToList()
                 .Select(entry => new YnabImportEntry(
-                    Date: entry.BookingDate,
+                    Date: entry.ValueDate,
                     Payee: entry.PartnerName,
                     Memo: entry.PaymentReference,
                     Inflow: entry.Amount > 0 ? Math.Abs(entry.Amount) : 0,
