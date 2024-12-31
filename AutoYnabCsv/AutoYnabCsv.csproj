@@ -5,8 +5,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
-    <PublishAot>true</PublishAot>
-    <PublishSingleFile>true</PublishSingleFile>
+    <!-- <PublishAot>true</PublishAot> -->
+    <!-- <PublishSingleFile>true</PublishSingleFile> -->
     <Company>github.com/d-led</Company>
   </PropertyGroup>
 

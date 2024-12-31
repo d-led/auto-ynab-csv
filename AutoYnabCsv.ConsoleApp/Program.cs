@@ -1,4 +1,5 @@
-﻿using AutoYnabCsv.Converters;
+﻿using System.Text;
+using AutoYnabCsv.Converters;
 using AutoYnabCsv.Detectors;
 using AutoYnabCsv.Exporters;
 using ConsoleAppFramework;
@@ -14,6 +15,7 @@ internal static class Program
             ConvertToConsole(args[0]);
             return;
         }
+
         var app = ConsoleApp.Create();
 
         app.Add("detect", DetectCommand);
@@ -26,17 +28,27 @@ internal static class Program
         try
         {
             Console.WriteLine(ConvertFile(path));
-        } 
+        }
         catch (FileNotFoundException)
         {
             SetExitCode(1);
             Console.WriteLine($"File not found: {path}");
         }
+        catch (FormatNotSupportedException)
+        {
+            SetExitCode(1);
+            Console.WriteLine($"Format not supported: {path}");
+        }
+        catch (NoConverterFoundException)
+        {
+            SetExitCode(1);
+            Console.WriteLine($"No converter found for: {path}");
+        }
     }
 
     private static string ConvertFile(string path)
     {
-        var text = File.ReadAllText(path);
+        var text = File.ReadAllText(path, Encoding.UTF8);
         var conversion = DetectAndConvert.Instance.Convert(text);
         return YnabCsvExporter.Export(conversion);
     }
@@ -61,7 +73,7 @@ internal static class Program
 
     private static string DetectInputType(string input)
     {
-        var contents = File.ReadAllText(input);
+        var contents = File.ReadAllText(input, Encoding.UTF8);
         var detection = DetectFirst.Instance.TryDetect(contents);
         return detection.SourceType;
     }

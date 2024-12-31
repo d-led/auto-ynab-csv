@@ -23,6 +23,7 @@ public class DetectAndConvert : IConvertInput
     {
         IConvertInput? converter = detectionSourceType switch {
             KnownSources.N26Source => new N26Converter(),
+            KnownSources.DkbGiroSource => new DkbGiroConverter(),
             _ => null
         };
         if (converter == null)

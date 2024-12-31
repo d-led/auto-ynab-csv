@@ -6,7 +6,6 @@ namespace AutoYnabCsv.Exporters;
 
 public static class YnabCsvExporter
 {
-    
     public static string Export(IEnumerable<YnabImportEntry> entries)
     {
         using var writer = new StringWriter();

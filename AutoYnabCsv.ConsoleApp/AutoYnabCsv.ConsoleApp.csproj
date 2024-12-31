@@ -5,11 +5,12 @@
         <TargetFramework>net9.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
-        <PublishAot>true</PublishAot>
+        <!-- <PublishAot>true</PublishAot> -->
         <InvariantGlobalization>true</InvariantGlobalization>
         <AssemblyName>auto-ynab-csv</AssemblyName>
         <Company>github.com/d-led</Company>
         <LangVersion>latest</LangVersion>
+        <PublishSingleFile>true</PublishSingleFile>
         <RootNamespace>AutoYnabCsv.App</RootNamespace>
     </PropertyGroup>
 

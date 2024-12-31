@@ -1,0 +1,6 @@
+﻿Date,Payee,Memo,Inflow,Outflow
+2024-12-13,Some Person                                                      Test. 32,"129837128723/. Some Company T123, Ihr Einkauf",0,275
+2024-12-13,Some Person                                                      Test. 32,"129837128723/. Some Company T123, Ihr Einkauf",0,75
+2024-12-11,Some Person,Some reason,0,1001
+2024-12-11,Some Person,"Same, or other reason",0,100122
+2024-12-11,Some Income,"Some/Reason,1232424/151341232/ABC/312",123456,0
