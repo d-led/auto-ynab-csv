@@ -1,4 +1,5 @@
 using ApprovalTests;
+using ApprovalTests.Core.Exceptions;
 using ApprovalTests.Namers;
 using ApprovalTests.Reporters;
 using AutoYnabCsv.Converters;
@@ -20,7 +21,19 @@ public class DetectAndConvertTest
         var csv = YnabCsvExporter.Export(conversion);
         using (ApprovalResults.ForScenario(inputFilename))
         {
-            Approvals.Verify(csv);
+            try
+            {
+                Approvals.Verify(csv);
+            } catch (ApprovalMismatchException ex)
+            {
+                Console.WriteLine("Approval mismatch:");
+                Console.WriteLine(ex.Message);
+                Console.WriteLine("Expected:");
+                Console.WriteLine(ex.Received);
+                Console.WriteLine("Actual:");
+                Console.WriteLine(ex.Approved);
+                throw;
+            }
         } 
     }
 }
