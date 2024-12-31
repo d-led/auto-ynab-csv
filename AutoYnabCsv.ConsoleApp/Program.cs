@@ -10,7 +10,7 @@ internal static class Program
 {
     private static void Main(string[] args)
     {
-        if (args.Length == 1)
+        if (args.Length == 1 && File.Exists(args[0]))
         {
             ConvertToConsole(args[0]);
             return;
@@ -28,11 +28,6 @@ internal static class Program
         try
         {
             Console.WriteLine(ConvertFile(path));
-        }
-        catch (FileNotFoundException)
-        {
-            SetExitCode(1);
-            Console.WriteLine($"File not found: {path}");
         }
         catch (FormatNotSupportedException)
         {
