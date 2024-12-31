@@ -1,3 +1,4 @@
+using System.Globalization;
 using ApprovalTests;
 using ApprovalTests.Namers;
 using ApprovalTests.Reporters;
@@ -15,6 +16,7 @@ public class DetectAndConvertTest
     [DataRow("dkb-giro.csv")]
     public void DetectAndConvertKnownCsv(string inputFilename)
     {
+        Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture; 
         var input = TestHelpers.SampleTextOf(inputFilename);
         var conversion = DetectAndConvert.Instance.Convert(input);
         var csv = YnabCsvExporter.Export(conversion);
