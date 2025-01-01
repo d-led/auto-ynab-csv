@@ -19,7 +19,7 @@ public class DetectAndConvert : IConvertInput
         return conversion.Convert(input);
     }
 
-    private IConvertInput ChooseConverter(string detectionSourceType)
+    private static IConvertInput ChooseConverter(string detectionSourceType)
     {
         IConvertInput? converter = detectionSourceType switch
         {
@@ -35,12 +35,8 @@ public class DetectAndConvert : IConvertInput
     }
 }
 
-[Serializable()]
-public class NoConverterFoundException : Exception
-{
-}
+[Serializable]
+public class NoConverterFoundException : Exception;
 
-[Serializable()]
-public class FormatNotSupportedException : Exception
-{
-}
+[Serializable]
+public class FormatNotSupportedException : Exception;

@@ -1,4 +1,3 @@
-using System.Globalization;
 using CsvHelper;
 using CsvHelper.Configuration;
 using CsvHelper.Configuration.Attributes;
@@ -52,15 +51,12 @@ public class EuropeanDecimalConverter : DefaultTypeConverter
             .Replace(".", "")
             .Replace(",", ".");
 
-        if (decimal.TryParse(
-                text,
-                out var result)
-           )
-        {
-            return result;
-        }
-
-        // throw new TypeConverterException(this, memberMapData, text, row.Context, $"Cannot convert '{text}' to decimal.");
-        return 0m;
+        return decimal.TryParse(
+            text,
+            out var result)
+            ?
+            result
+            :
+            0m;
     }
 }

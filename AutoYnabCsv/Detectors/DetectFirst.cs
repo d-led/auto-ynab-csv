@@ -4,10 +4,11 @@ namespace AutoYnabCsv.Detectors;
 
 public class DetectFirst(IEnumerable<IDetectInput> detectors) : IDetectInput
 {
-    private static readonly IDetectInput[] KnownDetectors = {
+    private static readonly IDetectInput[] KnownDetectors =
+    [
         new N26CsvDetector(),
         new DkbGiroDetector()
-    };
+    ];
 
     public static readonly IDetectInput Instance = new DetectFirst(KnownDetectors);
 

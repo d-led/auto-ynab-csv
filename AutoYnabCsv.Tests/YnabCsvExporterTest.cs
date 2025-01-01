@@ -30,7 +30,7 @@ public class YnabCsvExporterTest
                 Payee: "Payee2",
                 Memo: "memo with comma, here",
                 Inflow: 3500.0m,
-                Outflow: 0),
+                Outflow: 0)
         ]));
     }
 }

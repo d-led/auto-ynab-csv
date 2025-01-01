@@ -21,7 +21,7 @@ public class DkbGiroConverter : IConvertInput
             {
                 Console.WriteLine($"Bad data found on row {args.Context.Parser?.Count}: {args.RawRecord}");
             },
-            MissingFieldFound = null // Ignore missing fields
+            MissingFieldFound = null
         };
         using var csv = new CsvReader(reader, config);
         return
