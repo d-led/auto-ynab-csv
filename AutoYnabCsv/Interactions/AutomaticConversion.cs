@@ -27,13 +27,16 @@ public static class AutomaticConversion
                 KnownSources.NoSource
             );
         }
+        
+        var originalFilenameForComment = EnvironmentHelpers.ReplaceWithVariableNameIfStartsWithValue(
+            Path.GetFullPath(originalFilename), "HOME");
 
         var detection = DetectFirst.Instance.TryDetect(File.ReadAllText(originalFilename, Encoding.UTF8));
         if (detection.SourceType == KnownSources.NoSource)
         {
             return new AutomaticConversionResult(
                 false,
-                $"{originalFilename} isn't in a known format",
+                $"{originalFilenameForComment} isn't in a known format",
                 originalFilename,
                 "",
                 KnownSources.NoSource
@@ -42,8 +45,6 @@ public static class AutomaticConversion
         
         var newFilename = StringHelpers.SecondsResolutionUniqueAbsoluteFilename(originalFilename, "ynab");
         var newFilenameForComment = EnvironmentHelpers.ReplaceWithVariableNameIfStartsWithValue(newFilename, "HOME");
-        var originalFilenameForComment = EnvironmentHelpers.ReplaceWithVariableNameIfStartsWithValue(
-            Path.GetFullPath(originalFilename), "HOME");
         try
         {
             var newText = TextConversion.ConvertFile(originalFilename);
@@ -63,7 +64,7 @@ public static class AutomaticConversion
         {
             return new AutomaticConversionResult(
                 false,
-                $"{originalFilename} not converted due to unexpected exception: {ex.Message}",
+                $"{originalFilenameForComment} not converted due to unexpected exception: {ex.Message}",
                 originalFilename,
                 "",
                 detection.SourceType
