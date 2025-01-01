@@ -1,5 +1,5 @@
-using System.Reactive;
-using Avalonia.Input;
+using System.Collections.Generic;
+using AutoYnabCsv.Interactions;
 using ReactiveUI;
 
 namespace AutoYnabCsv.DesktopApp.ViewModels;
@@ -14,8 +14,12 @@ public class MainWindowViewModel : ViewModelBase
         set => this.RaiseAndSetIfChanged(ref _log, value);
     }
 
-    public void OnDrop(object? sender, DragEventArgs e)
+    public void ProcessDropOf(IEnumerable<string> files)
     {
-        Log += "dropped\n";
+        foreach (var file in files)
+        {
+            var result = AutomaticConversion.Convert(file);
+            Log += result.Comment + "\n";
+        }
     }
 }
