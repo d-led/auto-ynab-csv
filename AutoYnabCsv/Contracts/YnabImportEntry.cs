@@ -20,7 +20,7 @@ public record YnabImportEntry(
 
     [Name("Payee")]
     public string Payee { get; set; } = Payee;
-    
+
     [Name("Memo")]
     public string Memo { get; set; } = Memo;
 

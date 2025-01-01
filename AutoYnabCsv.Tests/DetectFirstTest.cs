@@ -16,7 +16,7 @@ public sealed class DetectFirstTest
         Assert.IsTrue(detection.Successful);
         Assert.AreEqual(expectedSourceType, detection.SourceType);
     }
-    
+
     [TestMethod]
     public void DetectUnknownCsv()
     {

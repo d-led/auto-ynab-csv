@@ -17,9 +17,9 @@ public class N26CsvDetector : IDetectInput
             .FirstOrDefault("")
             .Split(',')
             .Select(x => x.Trim(['"']));
-        
+
         var success = NecessaryColumns.All(necessaryColumn => headers.Contains(necessaryColumn));
-        
+
         return success ? KnownSources.N26 : KnownSources.None;
     }
 }

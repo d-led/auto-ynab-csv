@@ -20,13 +20,13 @@ public class YnabCsvExporterTest
     {
         Approvals.Verify(YnabCsvExporter.Export([
             new YnabImportEntry(
-                Date: new DateOnly(2024, 12, 22), 
+                Date: new DateOnly(2024, 12, 22),
                 Payee: "Some payee",
                  Memo: "memo1",
                  Inflow: 0,
                 Outflow: 2.5m),
             new YnabImportEntry(
-                Date: new DateOnly(2024, 1, 23), 
+                Date: new DateOnly(2024, 1, 23),
                 Payee: "Payee2",
                 Memo: "memo with comma, here",
                 Inflow: 3500.0m,

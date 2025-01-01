@@ -9,8 +9,8 @@ public class DetectFirst(IEnumerable<IDetectInput> detectors) : IDetectInput
         new DkbGiroDetector()
     };
 
-    public static readonly IDetectInput Instance = new DetectFirst(KnownDetectors); 
-    
+    public static readonly IDetectInput Instance = new DetectFirst(KnownDetectors);
+
     public Detection TryDetect(string input)
     {
         foreach (var detector in detectors)

@@ -16,13 +16,13 @@ public class DetectAndConvertTest
     [DataRow("dkb-giro.csv")]
     public void DetectAndConvertKnownCsv(string inputFilename)
     {
-        Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture; 
+        Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
         var input = TestHelpers.SampleTextOf(inputFilename);
         var conversion = DetectAndConvert.Instance.Convert(input);
         var csv = YnabCsvExporter.Export(conversion);
         using (ApprovalResults.ForScenario(inputFilename))
         {
             Approvals.Verify(csv);
-        } 
+        }
     }
 }

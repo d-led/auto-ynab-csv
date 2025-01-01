@@ -6,7 +6,7 @@ namespace AutoYnabCsv.Converters;
 public class DetectAndConvert : IConvertInput
 {
     public static readonly IConvertInput Instance = new DetectAndConvert();
-    
+
     public IEnumerable<YnabImportEntry> Convert(string input)
     {
         var detection = DetectFirst.Instance.TryDetect(input);
@@ -18,10 +18,11 @@ public class DetectAndConvert : IConvertInput
         var conversion = ChooseConverter(detection.SourceType);
         return conversion.Convert(input);
     }
-    
+
     private IConvertInput ChooseConverter(string detectionSourceType)
     {
-        IConvertInput? converter = detectionSourceType switch {
+        IConvertInput? converter = detectionSourceType switch
+        {
             KnownSources.N26Source => new N26Converter(),
             KnownSources.DkbGiroSource => new DkbGiroConverter(),
             _ => null
