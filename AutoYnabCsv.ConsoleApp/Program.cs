@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Reflection;
+using System.Text;
 using AutoYnabCsv.Converters;
 using AutoYnabCsv.Detectors;
 using AutoYnabCsv.Exporters;
@@ -19,6 +20,7 @@ internal static class Program
         var app = ConsoleApp.Create();
 
         app.Add("detect", DetectCommand);
+        app.Add("version", VersionCommand);
 
         app.Run(args);
     }
@@ -46,6 +48,13 @@ internal static class Program
         var text = File.ReadAllText(path, Encoding.UTF8);
         var conversion = DetectAndConvert.Instance.Convert(text);
         return YnabCsvExporter.Export(conversion);
+    }
+
+    private static void VersionCommand()
+    {
+        Console.WriteLine(Assembly.GetEntryAssembly()
+        ?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+        ?.InformationalVersion);
     }
 
     private static void DetectCommand(string input)
