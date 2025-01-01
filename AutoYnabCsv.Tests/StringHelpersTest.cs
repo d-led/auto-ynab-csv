@@ -1,6 +1,4 @@
-using System.Net.NetworkInformation;
 using AutoYnabCsv.Common;
-using Microsoft.VisualBasic;
 
 namespace Tests;
 
@@ -37,5 +35,20 @@ public class StringHelpersTest
             input,
             StringHelpers.ReplaceIfStartsWith(input, Prefix, "")
         );
+    }
+
+    [TestMethod]
+    public void TestSecondsResolutionUniqueAbsoluteFilename()
+    {
+        const string originalFilename = "test.csv";
+        const string prefix = "new";
+        var filename1 = StringHelpers.SecondsResolutionUniqueAbsoluteFilename(originalFilename, prefix);
+        Thread.Sleep(1010);
+        var filename2 = StringHelpers.SecondsResolutionUniqueAbsoluteFilename(originalFilename, prefix);
+        Assert.AreNotEqual(filename1, filename2);
+        Assert.IsTrue(filename1.Contains(prefix));
+        Assert.IsTrue(filename1.Contains(Path.GetFileNameWithoutExtension(originalFilename)));
+        Assert.AreEqual(Path.GetExtension(filename1), Path.GetExtension(originalFilename));
+        Assert.IsTrue(Path.IsPathFullyQualified(filename1));
     }
 }
