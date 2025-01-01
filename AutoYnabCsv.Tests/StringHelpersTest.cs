@@ -7,24 +7,35 @@ namespace Tests;
 [TestClass]
 public class StringHelpersTest
 {
+    private const string Prefix = "Some.*Prefix-";
+
     [TestMethod]
     public void SuccessfulReplacementIfPrefixFound()
     {
-        const string prefix = "Some.*Prefix-";
-        const string input = prefix+"World";
+        const string input = Prefix + "World";
         Assert.AreEqual(
             "Hello, World",
-            StringHelpers.ReplaceIfStartsWith(input, prefix, "Hello, ")
+            StringHelpers.ReplaceIfStartsWith(input, Prefix, "Hello, ")
         );
     }
-    
+
     [TestMethod]
     public void NotReplacedIfNotPrefixed()
     {
         const string input = "No-Prefix";
         Assert.AreEqual(
             input,
-            StringHelpers.ReplaceIfStartsWith(input, "Some.*Prefix-", "")
+            StringHelpers.ReplaceIfStartsWith(input, Prefix, "")
+        );
+    }
+
+    [TestMethod]
+    public void NotReplacedIfNotPrefixInMiddle()
+    {
+        const string input = "spoiler" + Prefix + "World";
+        Assert.AreEqual(
+            input,
+            StringHelpers.ReplaceIfStartsWith(input, Prefix, "")
         );
     }
 }
