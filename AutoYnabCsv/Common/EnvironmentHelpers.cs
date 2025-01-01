@@ -1,3 +1,5 @@
+using AutoYnabCsv.Interactions;
+
 namespace AutoYnabCsv.Common;
 
 public static class EnvironmentHelpers
@@ -7,6 +9,14 @@ public static class EnvironmentHelpers
         var value = Environment.GetEnvironmentVariable(name);
         return string.IsNullOrEmpty(value)
             ? input
-            : StringHelpers.ReplaceIfStartsWith(input, value, $"${name}");
+            : StringHelpers.ReplaceIfStartsWith(
+                input, 
+                value, 
+                WithOs.GetOsPlatform() == CurrentOs.Windows
+                    ?
+                    $"%{name}%"
+                    :
+                    $"${name}"
+                    );
     }
 }
