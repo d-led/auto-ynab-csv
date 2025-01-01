@@ -41,4 +41,8 @@
         </PackageReference>
         <PackageReference Include="Dotnet.Bundle" Version="*" />
     </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\AutoYnabCsv\AutoYnabCsv.csproj" />
+    </ItemGroup>
 </Project>
