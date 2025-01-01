@@ -33,6 +33,7 @@ jobs:
         run: dotnet restore
 
       - name: Build
+        shell: bash
         run: |
             dotnet publish AutoYnabCsv.ConsoleApp -c Release -r ${{ matrix.runtime }} --self-contained -o ./publish/auto-ynab-csv
 
