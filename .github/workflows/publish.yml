@@ -34,13 +34,13 @@ jobs:
 
       - name: Build
         run: |
-            dotnet publish -c Release -r ${{ matrix.runtime }} --self-contained -o ./publish/auto-ynab-csv
+            dotnet publish AutoYnabCsv.ConsoleApp -c Release -r ${{ matrix.runtime }} --self-contained -o ./publish/auto-ynab-csv
 
             # Pack files
             if [ "${{ matrix.os }}" == "windows-latest" ]; then
-                7z a -tzip "auto-ynab-csv-${{ matrix.os }}-${{ matrix.runtime }}.zip" "./${publish}/*"
+                7z a -tzip "auto-ynab-csv-${{ matrix.os }}-${{ matrix.runtime }}.zip" "./publish/*"
             else
-                tar czvf "auto-ynab-csv-${{ matrix.os }}-${{ matrix.runtime }}.tar.gz" "$publish/*"
+                tar czvf "auto-ynab-csv-${{ matrix.os }}-${{ matrix.runtime }}.tar.gz" "./publish/*"
             fi
 
       - name: Upload artifact
