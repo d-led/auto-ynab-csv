@@ -13,7 +13,6 @@
         <PublishSingleFile>true</PublishSingleFile>
         <RootNamespace>AutoYnabCsv.App</RootNamespace>
         <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
-        <Version>0.0.1</Version>
         <Title>auto-ynab-csv</Title>
         <Authors>github.com/d-led</Authors>
         <Description>Automatic conversion of various banking exports into YNAB CSV (limited functionality)</Description>
@@ -22,6 +21,8 @@
         <PackageLicenseUrl>https://raw.githubusercontent.com/d-led/auto-ynab-csv/refs/heads/main/LICENSE</PackageLicenseUrl>
         <RepositoryUrl>https://github.com/d-led/auto-ynab-csv</RepositoryUrl>
         <RepositoryType>Github</RepositoryType>
+        <Version>0.0.3</Version>
+        <AssemblyVersion>0.0.3</AssemblyVersion>
     </PropertyGroup>
 
     <ItemGroup>
