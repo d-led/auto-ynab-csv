@@ -42,14 +42,18 @@ public static class AutomaticConversion
         
         var newFilename = StringHelpers.SecondsResolutionUniqueAbsoluteFilename(originalFilename, "ynab");
         var newFilenameForComment = EnvironmentHelpers.ReplaceWithVariableNameIfStartsWithValue(newFilename, "HOME");
-        var originalFilenameForComment = StringHelpers.SecondsResolutionUniqueAbsoluteFilename(originalFilename, "HOME");
+        var originalFilenameForComment = EnvironmentHelpers.ReplaceWithVariableNameIfStartsWithValue(
+            Path.GetFullPath(originalFilename), "HOME");
         try
         {
             var newText = TextConversion.ConvertFile(originalFilename);
             File.WriteAllText(newFilename, newText, Encoding.UTF8);
             return new AutomaticConversionResult(
                 true,
-                $"Converted {originalFilename} into {newFilenameForComment}",
+                $@"Converted
+  {originalFilenameForComment}
+ into
+  {newFilenameForComment}",
                 originalFilename,
                 newFilename,
                 detection.SourceType
