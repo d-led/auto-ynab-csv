@@ -15,7 +15,7 @@
         Height="400"
         Padding="10">
 
-    <Grid>
+    <Grid DragDrop.AllowDrop="True">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"></RowDefinition>
             <RowDefinition Height="*"></RowDefinition>
