@@ -1,0 +1,70 @@
+name: Publish .NET CLI Binary
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            runtime: linux-x64
+          - os: windows-latest
+            runtime: win-x64
+          - os: macos-latest
+            runtime: osx-x64
+          - os: macos-latest
+            runtime: osx-arm64
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Install dependencies
+        run: dotnet restore
+
+      - name: Build
+        run: |
+            dotnet publish -c Release -r ${{ matrix.runtime }} --self-contained -o ./publish/auto-ynab-csv
+
+            # Pack files
+            if [ "${{ matrix.os }}" == "windows-latest" ]; then
+                7z a -tzip "auto-ynab-csv-${{ matrix.os }}-${{ matrix.runtime }}.zip" "./${publish}/*"
+            else
+                tar czvf "auto-ynab-csv-${{ matrix.os }}-${{ matrix.runtime }}.tar.gz" "$publish/*"
+            fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: published
+          path: ./auto-ynab-csv-*.*z*
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: published
+          merge-multiple: true
+
+      - name: Create release
+        id: create_release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          files: |
+            ./auto-ynab-csv-*.*z*
