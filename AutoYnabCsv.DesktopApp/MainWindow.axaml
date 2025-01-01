@@ -10,6 +10,33 @@
         MaxHeight="1200"
         MaxWidth="1700"
         Width="400"
-        Height="400">
-    Drop exported CSV files here
+        Height="400"
+        Padding="10">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"></RowDefinition>
+            <RowDefinition Height="*"></RowDefinition>
+        </Grid.RowDefinitions>
+        <TextBlock Grid.Row="0" Margin="10">
+            Drop exported CSV files here
+        </TextBlock>
+        <TextBox Grid.Row="1" AcceptsReturn="True" IsReadOnly="True" HorizontalAlignment="Stretch"
+                 VerticalAlignment="Stretch"
+                 Margin="10" Padding="10">
+            asdfasdfasdfsd
+
+            asdfa
+            sdf
+            adf
+            asdf
+            asdfasd
+            f
+            asdf
+            asdf
+            asd
+            fasdf
+            sadf
+        </TextBox>
+    </Grid>
 </Window>
