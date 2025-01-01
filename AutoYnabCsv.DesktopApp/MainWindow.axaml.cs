@@ -18,7 +18,7 @@ public partial class MainWindow : Window, IViewFor<MainWindowViewModel>
         {
             var files = (args.Data.GetFiles() ?? [])
                 .Where(file => file.Path.IsFile)
-                .Select(file => file.Path.AbsolutePath)
+                .Select(file => file.Path.LocalPath)
                 .Where(file => Path.GetExtension(file).ToLowerInvariant() == ".csv")
                 .ToList();
             
