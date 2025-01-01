@@ -8,7 +8,20 @@
 auto-ynab-csv {exported.csv} > {converted.csv}
 ```
 
-replacing the placeholders accordingly
+replacing the placeholders accordingly.
+
+Alternatively, let the app create a file next to the original one:
+
+```shell
+auto-ynab-csv convert --input {exported.csv}
+```
+
+## GUI Usage
+
+Drop the exported CSV files onto the app window.
+The converted files will be put next to the dropped files.
+
+![desktop app](./docs/img/desktop-app.png)
 
 ## Installation
 
@@ -20,11 +33,17 @@ replacing the placeholders accordingly
 
 ### Build Yourself
 
-```bash
+```shell
 ./scripts/build.sh
 ```
 
-see the output for the binary location
+See the output for the binary location.
+
+To build a Mac App bundle:
+
+```shell
+./scripts/build-app.sh
+```
 
 ## Currently Supported Export Formats
 
