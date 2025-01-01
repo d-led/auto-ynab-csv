@@ -1,0 +1,48 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>WinExe</OutputType>
+        <TargetFramework>net9.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+        <ApplicationManifest>app.manifest</ApplicationManifest>
+        <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+        <AssemblyName>AutoYnabCsv.DesktopApp</AssemblyName>
+        <RootNamespace>AutoYnabCsv.DesktopApp</RootNamespace>
+        <PublishSingleFile>true</PublishSingleFile>
+        <LangVersion>latest</LangVersion>
+        <PackageId>AutoYnabCsv.DesktopApp</PackageId>
+        <Authors>github.com/d-led</Authors>
+        <Company>github.com/d-led</Company>
+        <Product>AutoYnabCsv.DesktopApp</Product>
+        <Description>Automatic conversion of various banking exports into YNAB CSV (limited functionality)</Description>
+        <Copyright>Dmitry Ledentsov 2024-2025</Copyright>
+        <PackageProjectUrl>https://github.com/d-led/auto-ynab-csv</PackageProjectUrl>
+        <PackageLicenseUrl>https://raw.githubusercontent.com/d-led/auto-ynab-csv/refs/heads/main/LICENSE</PackageLicenseUrl>
+        <RepositoryUrl>https://github.com/d-led/auto-ynab-csv</RepositoryUrl>
+        <RepositoryType>Github</RepositoryType>
+        <Version>0.0.3</Version>
+        <AssemblyVersion>$(Version)</AssemblyVersion>
+        <CFBundleShortVersionString>$(Version)</CFBundleShortVersionString>
+        <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+        <UseAppHost>true</UseAppHost>
+        <RuntimeIdentifiers>osx-x64;osx-arm64</RuntimeIdentifiers>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Avalonia" Version="11.2.3"/>
+        <PackageReference Include="Avalonia.Desktop" Version="11.2.3"/>
+        <PackageReference Include="Avalonia.ReactiveUI" Version="11.2.3"/>
+        <PackageReference Include="Avalonia.Themes.Fluent" Version="11.2.3"/>
+        <PackageReference Include="Avalonia.Fonts.Inter" Version="11.2.3"/>
+        <!--Condition below is needed to remove Avalonia.Diagnostics package from build output in Release configuration.-->
+        <PackageReference Include="Avalonia.Diagnostics" Version="11.2.3">
+            <IncludeAssets Condition="'$(Configuration)' != 'Debug'">None</IncludeAssets>
+            <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
+        </PackageReference>
+        <PackageReference Include="Dotnet.Bundle" Version="*" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\AutoYnabCsv\AutoYnabCsv.csproj" />
+    </ItemGroup>
+</Project>

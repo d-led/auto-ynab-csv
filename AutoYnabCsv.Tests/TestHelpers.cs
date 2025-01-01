@@ -1,3 +1,5 @@
+using System.Text;
+
 namespace Tests;
 
 public static class TestHelpers
@@ -6,7 +8,7 @@ public static class TestHelpers
 
     public static string SampleTextOf(string sample)
     {
-        var input = File.ReadAllText(Path.Join(SamplesDir, sample));
+        var input = File.ReadAllText(Path.Join(SamplesDir, sample), Encoding.UTF8);
         return input;
     }
 }

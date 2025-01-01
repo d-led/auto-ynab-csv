@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AvaloniaProject">
+    <option name="projectPerEditor">
+      <map>
+        <entry key="AutoYnabCsv.DesktopApp/App.axaml" value="AutoYnabCsv.DesktopApp/AutoYnabCsv.DesktopApp.csproj" />
+        <entry key="AutoYnabCsv.DesktopApp/MainWindow.axaml" value="AutoYnabCsv.DesktopApp/AutoYnabCsv.DesktopApp.csproj" />
+      </map>
+    </option>
+  </component>
+</project>

@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AutoYnabCsv.Tests", "AutoYn
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AutoYnabCsv.ConsoleApp", "AutoYnabCsv.ConsoleApp\AutoYnabCsv.ConsoleApp.csproj", "{0CAEB7C3-5EBB-42E6-8506-FA8D428D8954}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DesktopApp", "AutoYnabCsv.DesktopApp\AutoYnabCsv.DesktopApp.csproj", "{9B8DCC7E-60DC-43D2-BF54-25E6D9503342}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -30,5 +32,9 @@ Global
 		{0CAEB7C3-5EBB-42E6-8506-FA8D428D8954}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0CAEB7C3-5EBB-42E6-8506-FA8D428D8954}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0CAEB7C3-5EBB-42E6-8506-FA8D428D8954}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9B8DCC7E-60DC-43D2-BF54-25E6D9503342}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9B8DCC7E-60DC-43D2-BF54-25E6D9503342}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9B8DCC7E-60DC-43D2-BF54-25E6D9503342}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9B8DCC7E-60DC-43D2-BF54-25E6D9503342}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

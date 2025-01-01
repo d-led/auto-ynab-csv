@@ -2,7 +2,7 @@
 using System.Text;
 using AutoYnabCsv.Converters;
 using AutoYnabCsv.Detectors;
-using AutoYnabCsv.Exporters;
+using AutoYnabCsv.Interactions;
 using ConsoleAppFramework;
 
 namespace AutoYnabCsv.App;
@@ -20,6 +20,7 @@ internal static class Program
         var app = ConsoleApp.Create();
 
         app.Add("detect", DetectCommand);
+        app.Add("convert", ConvertCommand);
         app.Add("version", VersionCommand);
 
         app.Run(args);
@@ -29,7 +30,7 @@ internal static class Program
     {
         try
         {
-            Console.WriteLine(ConvertFile(path));
+            Console.WriteLine(TextConversion.ConvertFile(path));
         }
         catch (FormatNotSupportedException)
         {
@@ -41,13 +42,6 @@ internal static class Program
             SetExitCode(1);
             Console.WriteLine($"No converter found for: {path}");
         }
-    }
-
-    private static string ConvertFile(string path)
-    {
-        var text = File.ReadAllText(path, Encoding.UTF8);
-        var conversion = DetectAndConvert.Instance.Convert(text);
-        return YnabCsvExporter.Export(conversion);
     }
 
     private static void VersionCommand()
@@ -68,6 +62,12 @@ internal static class Program
             SetExitCode(1);
             Console.WriteLine($"File not found: {input}");
         }
+    }
+    
+    private static void ConvertCommand(string input)
+    {
+        var result = AutomaticConversion.Convert(input);
+        Console.WriteLine(result.Comment);
     }
 
     private static void SetExitCode(int code)
