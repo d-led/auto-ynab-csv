@@ -5,6 +5,9 @@ on:
     tags:
       - "v*.*.*"
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ${{ matrix.os }}
@@ -33,6 +36,7 @@ jobs:
         run: dotnet restore
 
       - name: Build
+        shell: bash
         run: |
             dotnet publish AutoYnabCsv.ConsoleApp -c Release -r ${{ matrix.runtime }} --self-contained -o ./publish/auto-ynab-csv
 
@@ -40,13 +44,13 @@ jobs:
             if [ "${{ matrix.os }}" == "windows-latest" ]; then
                 7z a -tzip "auto-ynab-csv-${{ matrix.os }}-${{ matrix.runtime }}.zip" "./publish/*"
             else
-                tar czvf "auto-ynab-csv-${{ matrix.os }}-${{ matrix.runtime }}.tar.gz" "./publish/*"
+                tar czvf "auto-ynab-csv-${{ matrix.os }}-${{ matrix.runtime }}.tgz" publish
             fi
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: published
+          name: published-${{ matrix.os }}-${{ matrix.runtime }}
           path: ./auto-ynab-csv-*.*z*
 
   publish:
@@ -56,7 +60,7 @@ jobs:
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
-          name: published
+          pattern: published-*
           merge-multiple: true
 
       - name: Create release

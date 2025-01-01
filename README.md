@@ -10,6 +10,22 @@ auto-ynab-csv {exported.csv} > {converted.csv}
 
 replacing the placeholders accordingly
 
+## Installation
+
+### Download a Release
+
+- pick a [release](https://github.com/d-led/auto-ynab-csv/releases).
+- download the desired artifact && unpack.
+- On OSX you might need to run `sudo xattr -d com.apple.quarantine auto-ynab-csv` on the downloaded binary.
+
+### Build Yourself
+
+```bash
+./scripts/build.sh
+```
+
+see the output for the binary location
+
 ## Currently Supported Export Formats
 
 - [n26 Download](https://support.n26.com/en-eu/account-and-personal-details/bank-statements-and-confirmations/how-to-get-bank-statement-n26)
