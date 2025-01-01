@@ -4,6 +4,8 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="AutoYnabCsv.DesktopApp.MainWindow"
+        xmlns:vm="using:AutoYnabCsv.DesktopApp.ViewModels"
+        x:DataType="vm:MainWindowViewModel"
         Title="AutoYnabCsv.DesktopApp"
         MinWidth="200"
         MinHeight="200"
@@ -23,20 +25,8 @@
         </TextBlock>
         <TextBox Grid.Row="1" AcceptsReturn="True" IsReadOnly="True" HorizontalAlignment="Stretch"
                  VerticalAlignment="Stretch"
-                 Margin="10" Padding="10">
-            asdfasdfasdfsd
-
-            asdfa
-            sdf
-            adf
-            asdf
-            asdfasd
-            f
-            asdf
-            asdf
-            asd
-            fasdf
-            sadf
+                 Margin="10" Padding="10"
+                 Text="{Binding Log}">
         </TextBox>
     </Grid>
 </Window>
