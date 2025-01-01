@@ -40,7 +40,7 @@ jobs:
             if [ "${{ matrix.os }}" == "windows-latest" ]; then
                 7z a -tzip "auto-ynab-csv-${{ matrix.os }}-${{ matrix.runtime }}.zip" "./publish/*"
             else
-                tar czvf "auto-ynab-csv-${{ matrix.os }}-${{ matrix.runtime }}.tar.gz" "./publish/*"
+                tar czvf "auto-ynab-csv-${{ matrix.os }}-${{ matrix.runtime }}.tar.gz" publish
             fi
 
       - name: Upload artifact
