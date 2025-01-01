@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using AutoYnabCsv.Common;
 
 namespace Tests;
@@ -50,5 +51,7 @@ public class StringHelpersTest
         Assert.IsTrue(filename1.Contains(Path.GetFileNameWithoutExtension(originalFilename)));
         Assert.AreEqual(Path.GetExtension(filename1), Path.GetExtension(originalFilename));
         Assert.IsTrue(Path.IsPathFullyQualified(filename1));
+        
+        Assert.AreEqual(1, Regex.Count(filename1, Regex.Escape(Path.GetExtension(originalFilename))));
     }
 }
