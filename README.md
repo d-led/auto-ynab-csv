@@ -2,6 +2,12 @@
 
 > limited-use perpetual WIP automatic converter to [YNAB CSV](https://support.ynab.com/en_us/formatting-a-csv-file-an-overview-BJvczkuRq)
 
+## Why?
+
+- Account sync doesn't work for certain banks in YNAB.
+- Some export formats require manual corrections even with available semi-automatic tools.
+- Choosing the format manually should not be necessary.
+
 ## Usage
 
 ```shell
