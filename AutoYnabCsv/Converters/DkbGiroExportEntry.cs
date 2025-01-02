@@ -1,3 +1,4 @@
+using System.Globalization;
 using CsvHelper;
 using CsvHelper.Configuration;
 using CsvHelper.Configuration.Attributes;
@@ -52,7 +53,7 @@ public class EuropeanDecimalConverter : DefaultTypeConverter
             .Replace(",", ".");
 
         return decimal.TryParse(
-            text,
+            text,CultureInfo.InvariantCulture, 
             out var result)
             ?
             result
