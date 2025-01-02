@@ -28,7 +28,7 @@ public class DkbGiroConverter : IConvertInput
             csv.GetRecords<DkbGiroExportEntry>()
                 .ToList()
                 .Select(entry => new YnabImportEntry(
-                    Date: entry.ValueDate,
+                    Date: entry.BookingDate,
                     Payee: entry.Amount > 0 ? entry.Payer : entry.Payee,
                     Memo: entry.Purpose,
                     Inflow: entry.Amount > 0 ? Math.Abs(entry.Amount) : 0,
