@@ -52,7 +52,7 @@ public static class AutomaticConversion
             return new AutomaticConversionResult(
                 true,
                 $@"Converted
-  {originalFilenameForComment}
+  {originalFilenameForComment} ({detection.SourceType})
  into
   {newFilenameForComment}",
                 originalFilename,
