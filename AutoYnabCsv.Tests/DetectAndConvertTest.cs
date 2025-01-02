@@ -14,6 +14,7 @@ public class DetectAndConvertTest
     [TestMethod]
     [DataRow("n26-download.csv")]
     [DataRow("dkb-giro.csv")]
+    [DataRow("dkb-visa.csv")]
     public void DetectAndConvertKnownCsv(string inputFilename)
     {
         var input = TestHelpers.SampleTextOf(inputFilename);

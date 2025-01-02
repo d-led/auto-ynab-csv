@@ -25,6 +25,7 @@ public class DetectAndConvert : IConvertInput
         {
             KnownSources.N26Source => new N26Converter(),
             KnownSources.DkbGiroSource => new DkbGiroConverter(),
+            KnownSources.DkbVisaSource => new DkbVisaConverter(),
             _ => null
         };
         if (converter == null)

@@ -8,4 +8,6 @@ public static class KnownSources
     public static readonly Detection N26 = new(sourceType: N26Source, successful: true);
     public const string DkbGiroSource = "dkb.giro";
     public static readonly Detection DkbGiro = new(sourceType: DkbGiroSource, successful: true);
+    public const string DkbVisaSource = "dkb.visa";
+    public static readonly Detection DkbVisa = new(sourceType: DkbVisaSource, successful: true);
 }

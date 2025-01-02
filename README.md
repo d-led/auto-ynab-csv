@@ -55,6 +55,7 @@ To build a Mac App bundle:
 
 - [n26 Download](https://support.n26.com/en-eu/account-and-personal-details/bank-statements-and-confirmations/how-to-get-bank-statement-n26)
 - DKB Giro (new) CSV
+- DKB Visa (new) CSV
 
 ## Alternatives
 

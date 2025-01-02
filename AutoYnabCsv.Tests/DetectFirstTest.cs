@@ -9,6 +9,7 @@ public sealed class DetectFirstTest
     [TestMethod]
     [DataRow("n26-download.csv", KnownSources.N26Source)]
     [DataRow("dkb-giro.csv", KnownSources.DkbGiroSource)]
+    [DataRow("dkb-visa.csv", KnownSources.DkbVisaSource)]
     public void DetectKnownCsv(string inputFilename, string expectedSourceType)
     {
         var input = TestHelpers.SampleTextOf(inputFilename);

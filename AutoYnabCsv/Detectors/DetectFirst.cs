@@ -7,7 +7,8 @@ public class DetectFirst(IEnumerable<IDetectInput> detectors) : IDetectInput
     private static readonly IDetectInput[] KnownDetectors =
     [
         new N26CsvDetector(),
-        new DkbGiroDetector()
+        new DkbGiroDetector(),
+        new DkbVisaDetector()
     ];
 
     public static readonly IDetectInput Instance = new DetectFirst(KnownDetectors);

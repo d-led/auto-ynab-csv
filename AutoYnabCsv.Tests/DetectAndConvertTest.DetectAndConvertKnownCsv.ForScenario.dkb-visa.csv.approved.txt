@@ -1,0 +1,3 @@
+﻿Date,Payee,Memo,Inflow,Outflow
+2024-12-27,Einzahlung,Unbekannt,150,0
+2024-12-20,Kartenpreis,Entgelt,0,2.49
