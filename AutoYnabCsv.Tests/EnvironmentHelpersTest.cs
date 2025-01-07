@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using AutoYnabCsv.Common;
 
 namespace Tests;
@@ -14,7 +15,7 @@ public class EnvironmentHelpersTest
     {
         Environment.SetEnvironmentVariable(Key, Prefix);
         Assert.AreEqual(
-            $"${Key}{Postfix}",
+            RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? $"%TEST_VARIABLE_KEY%value" : $"${Key}{Postfix}",
             EnvironmentHelpers.ReplaceWithVariableNameIfStartsWithValue(Prefix + Postfix, Key)
         );
     }
