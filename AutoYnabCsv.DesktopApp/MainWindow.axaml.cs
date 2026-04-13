@@ -16,7 +16,10 @@ public partial class MainWindow : Window, IViewFor<MainWindowViewModel>
         DataContext = ViewModel;
         AddHandler(DragDrop.DropEvent, ((_, args) =>
         {
-            var files = (args.Data.GetFiles() ?? [])
+            if (args is not DragEventArgs dragEventArgs)
+                return;
+
+            var files = (dragEventArgs.DataTransfer.TryGetFiles() ?? [])
                 .Where(file => file.Path.IsFile)
                 .Select(file => file.Path.LocalPath)
                 .Where(file => Path.GetExtension(file).ToLowerInvariant() == ".csv")

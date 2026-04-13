@@ -1,30 +1,31 @@
 {
   "version": 1,
   "dependencies": {
-    "net9.0": {
+    "net10.0": {
       "ConsoleAppFramework": {
         "type": "Direct",
-        "requested": "[5.3.3, )",
-        "resolved": "5.3.3",
-        "contentHash": "Jr1O9mD6YIZYBLWKo5CQg6jJ5jWMDUvOpqeOL+yqduJquwxOY7ZIZMq0NS/Qny51KXnKQN3TYhhlcjYf85h2ag=="
+        "requested": "[5.7.13, )",
+        "resolved": "5.7.13",
+        "contentHash": "5YE0wrPl4U28g+L6502sNdyUKygSGfeLDOhutD/zMCTFSeM7QnonoYfHjckOeSd1DEl9PUQYAGSqO8DV7lCIuw=="
       },
       "Microsoft.NET.ILLink.Tasks": {
         "type": "Direct",
-        "requested": "[9.0.0, )",
-        "resolved": "9.0.0",
-        "contentHash": "zAwp213evC3UkimtVXRb+Dlgc/40QG145nmZDtp2LO9zJJMfrp+i/87BnXN7tRXEA4liyzdFkjqG1HE8/RPb4A=="
+        "requested": "[10.0.5, )",
+        "resolved": "10.0.5",
+        "contentHash": "A+5ZuQ0f449tM+MQrhf6R9ZX7lYpjk/ODEwLYKrnF6111rtARx8fVsm4YznUnQiKnnXfaXNBqgxmil6RW3L3SA=="
       },
       "CsvHelper": {
         "type": "Transitive",
-        "resolved": "33.0.1",
-        "contentHash": "fev4lynklAU2A9GVMLtwarkwaanjSYB4wUqO2nOJX5hnzObORzUqVLe+bDYCUyIIRQM4o5Bsq3CcyJR89iMmEQ=="
+        "resolved": "33.1.0",
+        "contentHash": "kqfTOZGrn7NarNeXgjh86JcpTHUoeQDMB8t9NVa/ZtlSYiV1rxfRnQ49WaJsob4AiGrbK0XDzpyKkBwai4F8eg=="
       },
       "autoynabcsv": {
         "type": "Project",
         "dependencies": {
-          "CsvHelper": "[33.0.1, )"
+          "CsvHelper": "[33.1.0, )"
         }
       }
-    }
+    },
+    "net10.0/osx-arm64": {}
   }
 }
