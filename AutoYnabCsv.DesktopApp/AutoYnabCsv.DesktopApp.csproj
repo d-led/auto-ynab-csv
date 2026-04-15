@@ -25,6 +25,7 @@
         <CFBundleShortVersionString>$(Version)</CFBundleShortVersionString>
         <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
         <UseAppHost>true</UseAppHost>
+        <ApplicationIcon>Resources/Icons/app-icon.ico</ApplicationIcon>
         <RuntimeIdentifiers>osx-x64;osx-arm64;win-x64;win-arm64;linux-musl-x64;linux-musl-arm64</RuntimeIdentifiers>
     </PropertyGroup>
 
@@ -45,4 +46,12 @@
     <ItemGroup>
       <ProjectReference Include="..\AutoYnabCsv\AutoYnabCsv.csproj" />
     </ItemGroup>
+
+        <ItemGroup>
+            <None Include="Resources/Icons/app-icon.icns">
+                <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+                <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+                <TargetPath>$(AssemblyName).icns</TargetPath>
+            </None>
+        </ItemGroup>
 </Project>
