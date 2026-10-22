@@ -280,6 +280,30 @@ public class EntryEnricherTest
     }
 
     [TestMethod]
+    public void ATitleTheShopCutShortGivesWayToTheWholeOne()
+    {
+        // Amazon shortens the title where it has no room and prints it whole further down; a memo
+        // that lists both says the same thing twice and once badly.
+        var mail = Mail(
+            vendor: "Amazon",
+            orderNumbers: ["000-0000000-0000001"],
+            fields: new Dictionary<string, string>
+            {
+                ["items"] =
+                    "Beispiel Magnetic Child...\nBeispiel Magnetische Kindersicherung 20 Schlösser",
+            }
+        );
+
+        var enriched = EntryEnricher.Of(Entry("AMZN Mktp DE", 32.99m), mail);
+
+        StringAssert.StartsWith(
+            enriched.Memo,
+            "Order 000-0000000-0000001 · Beispiel Magnetische Kindersicherung 20 Schlösser"
+        );
+        Assert.IsFalse(enriched.Memo.Contains("Child...", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
     public void ALongMemoIsCutRatherThanGrowingWithoutBound()
     {
         var entry = Entry("Some Shop", 12.00m, memo: new string('x', 500));

@@ -422,6 +422,88 @@ public class SiteExporterTest
     private static string Exported(SiteExport export, string source) =>
         File.ReadAllText(export.CsvPaths.Single(path => Path.GetFileName(path).StartsWith(source)));
 
+    [TestMethod]
+    public void TheConfirmationIsReadFirstSoTheRowKeepsTheWholeTitle()
+    {
+        // Three mails quote the same order: the dispatch and delivery notices repeat the shop's
+        // shortened subject, the confirmation prints the whole title and what it cost.
+        var directory = Path.Combine(
+            Path.GetTempPath(),
+            "auto-ynab-csv-tests",
+            $"site-{Guid.NewGuid():N}"
+        );
+
+        try
+        {
+            var entry = new CorrelationEntry(
+                0,
+                new DateOnly(2026, 10, 2),
+                "AMZN Mktp DE",
+                32.99m,
+                "000-0000000-0000001"
+            );
+
+            var export = SiteExporter.Export(
+                directory,
+                [ParcelMail("Dispatched: ‘Beispiel Magnetic Child...’"), ParcelMail("Delivered: ‘Beispiel Magnetic Child...’"), ConfirmationMail()],
+                [new BankSource("transactions.csv", "dkb.giro", [entry])],
+                Audit()
+            );
+
+            var csv = File.ReadAllText(export.CsvPaths.Single());
+            StringAssert.Contains(
+                csv,
+                "Order 000-0000000-0000001 · Beispiel Magnetische Kindersicherung 20 Schlösser"
+            );
+            Assert.IsFalse(csv.Contains("Child...", StringComparison.Ordinal));
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+            {
+                Directory.Delete(directory, recursive: true);
+            }
+        }
+    }
+
+    /// <summary>A dispatch or delivery note: only what the subject could hold.</summary>
+    private static MailFacts ParcelMail(string subject) =>
+        new(
+            new MailRecord(
+                $"parcel-{Guid.NewGuid():N}.emlx",
+                Received,
+                subject,
+                "ship-confirm@amazon.de",
+                "Amazon",
+                "body"
+            ),
+            "Amazon",
+            ["000-0000000-0000001"],
+            [],
+            new Dictionary<string, string> { ["items"] = "Beispiel Magnetic Child..." }
+        );
+
+    /// <summary>The confirmation: what was bought, in full, and what it cost.</summary>
+    private static MailFacts ConfirmationMail() =>
+        new(
+            new MailRecord(
+                "confirmation.emlx",
+                Received,
+                "Thanks for your order",
+                "ship-confirm@amazon.de",
+                "Amazon",
+                "body"
+            ),
+            "Amazon",
+            ["000-0000000-0000001"],
+            [32.99m],
+            new Dictionary<string, string>
+            {
+                ["items"] = "Beispiel Magnetische Kindersicherung 20 Schlösser",
+                ["total"] = "32,99",
+            }
+        );
+
     private static MailFacts Unrelated() =>
         new(
             new MailRecord(

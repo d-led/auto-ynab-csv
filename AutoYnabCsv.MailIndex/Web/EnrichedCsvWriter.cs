@@ -98,6 +98,14 @@ public static class EnrichedCsvWriter
     }
 
     /// <summary>
+    /// How much a mail knows about the purchase. The confirmation that lists the goods and what
+    /// they cost stands above the dispatch and delivery notices, which mostly repeat the subject —
+    /// so the titles a memo lists are the whole ones and not the shop's shortened copy.
+    /// </summary>
+    private static int RichnessOf(MailFacts mail) =>
+        (mail.Fields.ContainsKey("total") ? 2 : 0) + mail.Items.Count;
+
+    /// <summary>
     /// The mail the row is built from. A number the row quotes is quoted back by every mail about
     /// that purchase — the confirmation lists the goods, the delivery note says they arrived — so
     /// they add up instead of competing. Two mails that are evidenced equally well by amount alone
@@ -124,6 +132,7 @@ public static class EnrichedCsvWriter
                 .Where(match => match.Evidence.Kind == EvidenceKind.Reference)
                 .Select(match => match.Mail)
                 .DistinctBy(mail => mail.Mail.Path)
+                .OrderByDescending(RichnessOf)
                 .ToArray();
         }
 

@@ -122,7 +122,7 @@ public static class EntryEnricher
             .OfType<string>()
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
-        var listed = bought.Take(MaxItems).ToArray();
+        var listed = WholeTitles(bought).Take(MaxItems).ToArray();
 
         if (listed.Length > 0)
         {
@@ -134,6 +134,17 @@ public static class EntryEnricher
             yield return $"+{bought.Length - listed.Length} more";
         }
     }
+
+    /// <summary>
+    /// A shop shortens a title where it has no room — "Hoffenbach Magnetic Child…" in a subject —
+    /// and prints it whole further down the mail. A name cut short is only worth a memo when
+    /// nothing whole was found, so it is dropped rather than listed beside the full one.
+    /// </summary>
+    private static IReadOnlyList<string> WholeTitles(IReadOnlyList<string> names) =>
+        names.Any(name => !CutShort(name)) ? names.Where(name => !CutShort(name)).ToArray() : names;
+
+    private static bool CutShort(string name) =>
+        name.EndsWith('…') || name.EndsWith("...", StringComparison.Ordinal);
 
     /// <summary>
     /// A memo is read on a phone in a bank app: a URL is noise there, and a link is not something
