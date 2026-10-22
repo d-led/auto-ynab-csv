@@ -10,7 +10,11 @@
         <RootNamespace>AutoYnabCsv.DesktopApp</RootNamespace>
         <PublishSingleFile>true</PublishSingleFile>
         <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+        <!-- Compressing the single file is only supported for a self-contained publish
+             (NETSDK1176). A .app handed to someone has to bring its runtime anyway; a build
+             without a runtime identifier stays framework-dependent and is unaffected. -->
         <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+        <SelfContained Condition="'$(RuntimeIdentifier)' != ''">true</SelfContained>
         <PublishTrimmed>false</PublishTrimmed>
         <DebugType>embedded</DebugType>
         <LangVersion>latest</LangVersion>
