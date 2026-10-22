@@ -1,0 +1,181 @@
+{
+  // The rules this tool ships. They are read from the assembly, then a file with the same id in
+  // one of the pattern directories replaces them. `auto-ynab-csv mail patterns --write` copies
+  // this file next to your config so it can be edited instead of guessed at.
+  //
+  // A field is a regular expression with one capture group; the group is the value. The field
+  // named `items` keeps every match instead of only the first, one per line — that is what the
+  // memo lists. It is read from the body unless the rule says `"itemsFrom": "subject"`, which is
+  // for the shops that name what was bought in the subject alone.
+  //
+  // `vendors` names a sender domain whose mail no rule matches. A rule's own `vendor` beats it,
+  // and a file with the same domain replaces one.
+  "version": 1,
+  "vendors": {
+    "amazon.de": "Amazon",
+    "amazon.com": "Amazon",
+    "paypal.de": "PayPal",
+    "paypal.com": "PayPal",
+    "kleinanzeigen.de": "Kleinanzeigen",
+    "thomann.de": "Thomann",
+    "ebay.de": "eBay",
+    "ebay.com": "eBay",
+    "dhl.de": "DHL",
+    "deutschepost.de": "Deutsche Post",
+    "ikea.de": "IKEA",
+    "zalando.de": "Zalando",
+    "steam.com": "Steam",
+    "steampowered.com": "Steam"
+  },
+  // A mailbox search downloads bodies, so it is only worth it for rows whose payee names nothing
+  // you could categorize from: a processor, or a shop without the merchant. Everything else the
+  // index alone answers.
+  "opaquePayees": ["paypal", "amazon", "kleinanzeigen", "ebay"],
+  // Money that moved without anything being bought. No mail explains these, so none is read —
+  // and unlike a rule, adding a phrase here costs no re-index.
+  "transfers": [
+    "bareinzahlung",
+    "kreditkartenabrechnung",
+    "visa kreditkarte",
+    "kreditkarten geldanlage",
+    "darlehensauszahlung",
+    "lastschrift an",
+    "abbuchung vom paypal-konto"
+  ],
+  "rules": [
+    {
+      "id": "amazon.order",
+      "sender": "amazon\\.",
+      "subject": "(Bestellung|Order|Versand|Rechnung|invoice)",
+      "vendor": "Amazon",
+      "fields": {
+        // 028-1234567-8901234; Amazon puts a right-to-left mark before it, which is stripped
+        "orderNumber": "\\b\\d{3}-\\d{7}-\\d{7}\\b",
+        // "Total€34.99", "Gesamtbetrag193,80 €" — never the VAT or the net amount
+        "total": "(?:Gesamtsumme|Gesamtbetrag|Order\\s+Total|Summe|Gesamt|Total)[^0-9]{0,20}(?:EUR|€)?\\s*([0-9]{1,3}(?:[.,][0-9]{3})*[.,][0-9]{2})",
+        // "3 x Kabel 3,50 €" — the whole line after the quantity
+        "items": "(?m)^\\s*\\d{1,2}\\s*[x×]\\s+(?<item>[^\\r\\n]{3,100}?)\\s*$"
+      }
+    },
+    {
+      "id": "amazon.confirmation",
+      "sender": "amazon\\.",
+      "subject": "(Bestellung|Order|Versand|Rechnung|invoice)",
+      "vendor": "Amazon",
+      "fields": {
+        // Two layouts, one item each: the parcel list ("* title" over as many lines as the title
+        // needs, then "Quantity: 1") and a shipping confirmation (a picture whose description is
+        // the whole title, then the same title as a link cut short with "...", then the seller).
+        "items": "(?m)^\\*[ \\t]*(?<item>[^\\r\\n]+(?:\\r?\\n(?![ \\t]*(?:\\*|Quantity:))[^\\r\\n]+)*)|(?m)^(?<item>[^\\r\\n]{20,})\\r?\\n(?:[^\\r\\n]{5,}\\.\\.\\.\\r?\\n)?Sold by"
+      }
+    },
+    {
+      "id": "amazon.ordered",
+      "sender": "amazon\\.",
+      // "Delivered: ‘Beispiel Federn-Set...’ and 1 more item" — Amazon says what was bought
+      // in the subject, shortened by Amazon itself. The footer then never gets a say.
+      "subject": "(Ordered|Dispatched|Delivered|Out for delivery|Bestellt|Versandt|Zugestellt):",
+      "vendor": "Amazon",
+      "itemsFrom": "subject",
+      "fields": {
+        "items": "(?m)^\\s*(?:Ordered|Dispatched|Delivered|Out for delivery|Bestellt|Versandt|Zugestellt):\\s*(?:\\d+\\s+)?\u2018(?<item>[^\u2019]{3,180})\u2019"
+      }
+    },
+    {
+      "id": "amazon.titles",
+      "sender": "amazon\\.",
+      "subject": "(Ordered|Bestellung|Order|Versand|Rechnung|invoice|delivered|geliefert|zugestellt|Zustellung)",
+      "vendor": "Amazon",
+      "fields": {
+        "orderNumber": "\\b\\d{3}-\\d{7}-\\d{7}\\b",
+        // The last resort, for the mails that list titles as plain lines instead of the shapes
+        // above. A title is a long line of words that is not one of the sentences around it
+        // ("Your package was delivered!", "Return or replace items in Your Orders.", the
+        // trading-name footer), which all end in punctuation — and it is never a link: the
+        // footer's "Your Orders", "Your Account" and "Buy Again" are URLs with a label in front.
+        "items": "(?m)^(?!Order)(?!.*(?:https?://|www\\.))(?=[^\\r\\n]*\\s\\S)(?<item>[A-Za-z0-9ÄÖÜäöü][^!\\r\\n]{24,190}[^.!\\s])$"
+      }
+    },
+    {
+      "id": "paypal.payment",
+      "sender": "paypal\\.",
+      // A receipt's subject is often just "Thomann GmbH: 193,80 € EUR", which names no action.
+      "subject": "(Zahlung|Payment|gesendet|sent|Receipt|Beleg|[0-9]+,[0-9]{2}\\s*€)",
+      "vendor": "PayPal",
+      "fields": {
+        // "Sie haben 67,32 € EUR an Takeaway.com Payment... gezahlt" — the party, not the rest
+        // of the sentence, which carries on into the receipt's labels.
+        "recipient": "(?:an|to)\\s+([^,\\r\\n]{2,60}?)\\s+(?:gezahlt|gesendet|autorisiert|bezahlt|paid|sent)",
+        // "Transaktionscode: 36C3079748428250K" — the code, and only it: matched by its own
+        // label, so the word "Transaktionsdetails" is not a code, and case matters.
+        "transactionId": "(?:Transaktionscode|Transaktions-ID|Transaktionsnummer|Transaction\\s*ID)\\D{0,12}((?-i:[A-Z0-9]{17}))",
+        // the order number the merchant and the shop's own confirmation also quote
+        "orderNumber": "(?:Bestellnummer|Order\\s*(?:number|no\\.?))\\D{0,12}([0-9]{6,20}(?:[.-][0-9]{3,8})?)",
+        "merchant": "(?:Ihr Einkauf bei|Händler|Verkäufer|Merchant)\\s*:?\\s*([^,\\r\\n]{2,60})"
+      }
+    },
+    {
+      "id": "paypal.received",
+      "sender": "paypal\\.",
+      "subject": "(erhalten|received|gesendet|sent)",
+      "vendor": "PayPal",
+      "fields": {
+        // "Ralf Beispiel hat dir 85,00 € EUR gesendet" — who the money came from
+        "merchant": "(?m)^([^\\r\\n]{2,60}?)\\s+hat dir\\s"
+      }
+    },
+    {
+      "id": "ebay.order",
+      "sender": "ebay\\.",
+      "subject": "(Bestellung|Order|Vielen Dank|Verkauf)",
+      "vendor": "eBay",
+      "fields": {
+        // "Bestellnummer: 00-00000-00000" — the number both eBay and the receipt quote
+        "orderNumber": "Bestellnummer\\s*:?\\s*([0-9]{2}-[0-9]{5}-[0-9]{5})",
+        // Each item is the line above its own price label; the prose of the confirmation is
+        // not, and neither is the returns policy that follows.
+        "items": "(?m)^(?!Preis|Price|Bestellnummer|Verkäufer|Artikelnr)(?<item>[^\\r\\n]{3,120})\\r?\\n+(?:Preis|Price)\\s*:"
+      }
+    },
+    {
+      "id": "thomann.order",
+      "sender": "thomann\\.",
+      "subject": "(Bestellung|Rechnung|Versand|Auftrag)",
+      "vendor": "Thomann",
+      "fields": {
+        // "Auftragsnummer100000.000001" — the dotted part belongs to the number
+        "orderNumber": "(?:Bestellnummer|Auftragsnummer|Order\\s*(?:number|no\\.?))\\D{0,12}([0-9]{6,20}(?:[.-][0-9]{3,8})?)",
+        "invoiceNumber": "(?:Rechnungsnummer|Invoice)\\D{0,12}([0-9]{6,20}(?:[.-][0-9]{3,8})?)",
+        "total": "(?:Gesamtsumme|Gesamtbetrag|Order\\s+Total|Summe|Gesamt|Total)[^0-9]{0,20}(?:EUR|€)?\\s*([0-9]{1,3}(?:[.,][0-9]{3})*[.,][0-9]{2})",
+        "items": "(?m)^\\s*\\d{1,2}\\s*[x×]\\s+(?<item>[^\\r\\n]{3,100}?)\\s*$"
+      }
+    },
+    {
+      "id": "db.booking",
+      "sender": "(bahn\\.de|deutschebahn\\.com)",
+      "subject": "(Buchungsbest|Buchung|Fahrkarte|Ticket|Reise)",
+      "vendor": "Deutsche Bahn",
+      "fields": {
+        // "Auftragsnummer 100000000001" — the same number the PayPal receipt calls Bestellnummer
+        "orderNumber": "Auftragsnummer\\D{0,12}([0-9]{6,20})",
+        "total": "(?:Gesamtsumme|Gesamtbetrag|Order\\s+Total|Summe|Gesamt|Total)[^0-9]{0,20}(?:EUR|€)?\\s*([0-9]{1,3}(?:[.,][0-9]{3})*[.,][0-9]{2})",
+        // the fares and the seat reservations, one per line — not the connections
+        "items": "(?m)^(?<item>(?:Super\\s+Sparpreis|Sparpreis|Flexpreis|Sitzplatzreservierung|Liegewagen|Schlafwagen|BahnCard)[^\\r\\n]{0,80})$"
+      }
+    },
+    {
+      "id": "kleinanzeigen.sale",
+      "sender": "kleinanzeigen\\.",
+      "subject": "(verkauft|Zahlung|Kauf|Bestellung|Bestellbest|Anzeige|Transaktion)",
+      "vendor": "Kleinanzeigen",
+      "fields": {
+        // 193d8050-0000-11f1-0000-000000000000
+        "transactionId": "\\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\b",
+        // the item between quotes: den Artikel **„Beispielartikel"**
+        "items": "(?:Artikels?|Anzeige)[^\"„“\\r\\n]{0,12}[„“\"](?<item>[^\"„“”\\r\\n]{3,120})",
+        "orderNumber": "Bestellnummer\\D{0,12}([0-9]{6,20})",
+        "total": "(?:Gesamtsumme|Gesamtbetrag|Order\\s+Total|Summe|Gesamt|Total)[^0-9]{0,20}(?:EUR|€)?\\s*([0-9]{1,3}(?:[.,][0-9]{3})*[.,][0-9]{2})"
+      }
+    }
+  ]
+}

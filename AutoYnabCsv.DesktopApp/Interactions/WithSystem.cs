@@ -11,17 +11,19 @@ public static class WithSystem
     {
         if (!File.Exists(fileName))
             return;
-        
+
         try
         {
-             switch(WithOs.GetOsPlatform())
-             {
-                case CurrentOs.Windows :
+            switch (WithOs.GetOsPlatform())
+            {
+                case CurrentOs.Windows:
                     RevealInExplorer(fileName);
                     break;
-                case CurrentOs.Mac: RevealInFinder(fileName);
+                case CurrentOs.Mac:
+                    RevealInFinder(fileName);
                     break;
-             };
+            }
+            ;
         }
         catch
         {
@@ -32,6 +34,31 @@ public static class WithSystem
     private static void RevealInFinder(string path)
     {
         Process.Start("open", $"-R \"{path}\"");
+    }
+
+    public static void OpenFolder(string directory)
+    {
+        try
+        {
+            Directory.CreateDirectory(directory);
+
+            switch (WithOs.GetOsPlatform())
+            {
+                case CurrentOs.Windows:
+                    Process.Start("explorer.exe", $"\"{directory}\"");
+                    break;
+                case CurrentOs.Mac:
+                    Process.Start("open", $"\"{directory}\"");
+                    break;
+                default:
+                    Process.Start("xdg-open", $"\"{directory}\"");
+                    break;
+            }
+        }
+        catch
+        {
+            // opening a folder is a courtesy; the path is visible either way
+        }
     }
 
     private static void RevealInExplorer(string path)

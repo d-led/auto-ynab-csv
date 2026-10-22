@@ -7,18 +7,19 @@
         xmlns:vm="using:AutoYnabCsv.DesktopApp.ViewModels"
         x:DataType="vm:MainWindowViewModel"
         Title="AutoYnabCsv.DesktopApp"
-        MinWidth="200"
-        MinHeight="200"
+        MinWidth="560"
+        MinHeight="380"
         MaxHeight="1200"
         MaxWidth="1700"
-        Width="400"
-        Height="400"
+        Width="640"
+        Height="600"
         Padding="10">
 
     <Grid DragDrop.AllowDrop="True">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"></RowDefinition>
             <RowDefinition Height="*"></RowDefinition>
+            <RowDefinition Height="Auto"></RowDefinition>
         </Grid.RowDefinitions>
         <TextBlock Grid.Row="0" Margin="10">
             Drop exported CSV files here
@@ -28,5 +29,32 @@
                  Margin="10" Padding="10"
                  Text="{Binding Log}">
         </TextBox>
+        <StackPanel Grid.Row="2" Margin="10,0,10,10" Spacing="6">
+            <TextBlock Text="Nothing to configure: dropped files convert next to themselves."
+                       TextWrapping="Wrap" FontSize="12"></TextBlock>
+            <ItemsControl ItemsSource="{Binding Locations}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:LocationRow">
+                        <Grid ColumnDefinitions="88,*,Auto" Margin="0,0,0,4">
+                            <TextBlock Grid.Column="0" Text="{Binding Name}" FontSize="11"
+                                       Foreground="Gray" VerticalAlignment="Top"></TextBlock>
+                            <SelectableTextBlock Grid.Column="1" Text="{Binding Path}"
+                                                 FontFamily="Menlo, Consolas, monospace" FontSize="11"
+                                                 TextWrapping="Wrap"></SelectableTextBlock>
+                            <Button Grid.Column="2" Content="Copy" FontSize="11" Padding="8,2"
+                                    Margin="8,0,0,0" Click="OnCopyPath"></Button>
+                        </Grid>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <WrapPanel Orientation="Horizontal">
+                <Button Content="Show index" Click="OnShowIndex" Margin="0,0,6,6"></Button>
+                <Button Content="Show config" Click="OnShowConfig" Margin="0,0,6,6"></Button>
+                <Button Content="Show export" Click="OnShowExport" Margin="0,0,6,6"></Button>
+                <Button Content="Index mail" Click="OnIndexMail" Margin="0,0,6,6"></Button>
+                <Button Content="Export report" Click="OnExportReport" Margin="0,0,6,6"></Button>
+            </WrapPanel>
+            <TextBlock Text="{Binding MailStatus}" FontSize="11" TextWrapping="Wrap"></TextBlock>
+        </StackPanel>
     </Grid>
 </Window>

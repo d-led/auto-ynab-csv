@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.RegularExpressions;
 
 namespace AutoYnabCsv.Common;
@@ -11,14 +12,14 @@ public static class StringHelpers
 
     public static string SecondsResolutionUniqueAbsoluteFilename(string path, string prefix)
     {
-        var timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
+        var timestamp = DateTime.Now.ToString("yyyyMMddHHmmss", CultureInfo.InvariantCulture);
         var fullPath = Path.GetFullPath(path);
         var dirName = Path.GetDirectoryName(fullPath) ?? string.Empty;
         var fileNameWithoutExtension = Path.GetFileNameWithoutExtension(fullPath);
         var extension = Path.GetExtension(fullPath);
         return Path.Combine(
             dirName,
-            $"{fileNameWithoutExtension}.{prefix}-{timestamp}{extension}"    
+            $"{fileNameWithoutExtension}.{prefix}-{timestamp}{extension}"
         );
     }
 }

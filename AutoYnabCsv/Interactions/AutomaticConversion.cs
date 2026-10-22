@@ -27,7 +27,7 @@ public static class AutomaticConversion
                 KnownSources.NoSource
             );
         }
-        
+
         var originalFilenameForComment = EnvironmentHelpers.ReplaceWithVariableNameIfStartsWithValue(
             Path.GetFullPath(originalFilename), "HOME");
 
@@ -42,7 +42,7 @@ public static class AutomaticConversion
                 KnownSources.NoSource
             );
         }
-        
+
         var newFilename = StringHelpers.SecondsResolutionUniqueAbsoluteFilename(originalFilename, "ynab");
         var newFilenameForComment = EnvironmentHelpers.ReplaceWithVariableNameIfStartsWithValue(newFilename, "HOME");
         try

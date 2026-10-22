@@ -21,7 +21,7 @@ public static class WithOs
         {
             return CurrentOs.Mac;
         }
-        
+
         return CurrentOs.Unknown;
     }
 }

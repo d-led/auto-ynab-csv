@@ -9,6 +9,10 @@
         <AssemblyName>AutoYnabCsv.DesktopApp</AssemblyName>
         <RootNamespace>AutoYnabCsv.DesktopApp</RootNamespace>
         <PublishSingleFile>true</PublishSingleFile>
+        <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+        <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+        <PublishTrimmed>false</PublishTrimmed>
+        <DebugType>embedded</DebugType>
         <LangVersion>latest</LangVersion>
         <PackageId>AutoYnabCsv.DesktopApp</PackageId>
         <Authors>github.com/d-led</Authors>
@@ -30,13 +34,14 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Avalonia" Version="12.0.1" />
-        <PackageReference Include="Avalonia.Desktop" Version="12.0.1" />
-        <PackageReference Include="Avalonia.ReactiveUI" Version="11.3.9" />
-        <PackageReference Include="Avalonia.Themes.Fluent" Version="12.0.1" />
-        <PackageReference Include="Avalonia.Fonts.Inter" Version="12.0.1" />
+        <PackageReference Include="Avalonia" Version="12.1.4" />
+        <PackageReference Include="Avalonia.Desktop" Version="12.1.4" />
+        <!--Deprecated by its authors; ReactiveUI.Avalonia is the replacement.-->
+        <PackageReference Include="Avalonia.ReactiveUI" Version="11.3.8" />
+        <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.4" />
+        <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.4" />
         <!--Condition below is needed to remove Avalonia.Diagnostics package from build output in Release configuration.-->
-        <PackageReference Include="Avalonia.Diagnostics" Version="11.3.14">
+        <PackageReference Include="Avalonia.Diagnostics" Version="11.3.22">
             <IncludeAssets Condition="'$(Configuration)' != 'Debug'">None</IncludeAssets>
             <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
         </PackageReference>
@@ -45,6 +50,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\AutoYnabCsv\AutoYnabCsv.csproj" />
+      <ProjectReference Include="..\AutoYnabCsv.MailIndex\AutoYnabCsv.MailIndex.csproj" />
     </ItemGroup>
 
         <ItemGroup>

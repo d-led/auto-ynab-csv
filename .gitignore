@@ -508,3 +508,7 @@ FodyWeavers.xsd
 ./publish
 ./*.zip
 ./*.tgz
+.vscode/tasks.json
+
+# quality gate output
+artifacts/

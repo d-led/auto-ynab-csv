@@ -11,6 +11,10 @@
         <Company>github.com/d-led</Company>
         <LangVersion>latest</LangVersion>
         <PublishSingleFile>true</PublishSingleFile>
+        <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+        <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+        <PublishTrimmed>false</PublishTrimmed>
+        <DebugType>embedded</DebugType>
         <RootNamespace>AutoYnabCsv.App</RootNamespace>
         <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
         <Title>auto-ynab-csv</Title>
@@ -34,6 +38,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\AutoYnabCsv\AutoYnabCsv.csproj" />
+      <ProjectReference Include="..\AutoYnabCsv.MailIndex\AutoYnabCsv.MailIndex.csproj" />
     </ItemGroup>
 
 </Project>

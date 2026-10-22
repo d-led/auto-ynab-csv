@@ -10,8 +10,8 @@ public static class EnvironmentHelpers
         return string.IsNullOrEmpty(value)
             ? input
             : StringHelpers.ReplaceIfStartsWith(
-                input, 
-                value, 
+                input,
+                value,
                 WithOs.GetOsPlatform() == CurrentOs.Windows
                     ?
                     $"%{name}%"

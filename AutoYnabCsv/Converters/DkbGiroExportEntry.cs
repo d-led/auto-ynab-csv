@@ -53,7 +53,7 @@ public class EuropeanDecimalConverter : DefaultTypeConverter
             .Replace(",", ".");
 
         return decimal.TryParse(
-            text,CultureInfo.InvariantCulture, 
+            text, CultureInfo.InvariantCulture,
             out var result)
             ?
             result

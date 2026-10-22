@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AutoYnabCsv.ConsoleApp", "A
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DesktopApp", "AutoYnabCsv.DesktopApp\AutoYnabCsv.DesktopApp.csproj", "{9B8DCC7E-60DC-43D2-BF54-25E6D9503342}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AutoYnabCsv.MailIndex", "AutoYnabCsv.MailIndex\AutoYnabCsv.MailIndex.csproj", "{E2B7B0B1-3A2E-4E33-9C6A-1F5C2E9D4A77}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -36,5 +38,9 @@ Global
 		{9B8DCC7E-60DC-43D2-BF54-25E6D9503342}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9B8DCC7E-60DC-43D2-BF54-25E6D9503342}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9B8DCC7E-60DC-43D2-BF54-25E6D9503342}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E2B7B0B1-3A2E-4E33-9C6A-1F5C2E9D4A77}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E2B7B0B1-3A2E-4E33-9C6A-1F5C2E9D4A77}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E2B7B0B1-3A2E-4E33-9C6A-1F5C2E9D4A77}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E2B7B0B1-3A2E-4E33-9C6A-1F5C2E9D4A77}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

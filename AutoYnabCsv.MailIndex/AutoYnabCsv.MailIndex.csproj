@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <Company>github.com/d-led</Company>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MimeKit" Version="4.18.1" />
+    <!--MimeKit 4.18.1 asks for 10.0.0, which has open advisories; pin the patched one.-->
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.13" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AutoYnabCsv\AutoYnabCsv.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--The rules this tool ships. Data, not code, so a user file can override one by id.-->
+    <EmbeddedResource Include="Extraction/patterns.jsonc"
+                      LogicalName="AutoYnabCsv.MailIndex.Extraction.patterns.jsonc" />
+  </ItemGroup>
+
+</Project>
