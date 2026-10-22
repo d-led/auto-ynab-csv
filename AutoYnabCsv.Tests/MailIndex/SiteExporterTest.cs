@@ -378,6 +378,50 @@ public class SiteExporterTest
         Assert.AreEqual(1, flows.Single(flow => flow.From == "a · 1111").Count);
     }
 
+    [TestMethod]
+    public void ARowOfAnAccountTransferIsNamedAfterTheAccountTheMoneyCrossedTo()
+    {
+        var directory = Path.Combine(
+            Path.GetTempPath(),
+            "auto-ynab-csv-tests",
+            $"site-{Guid.NewGuid():N}"
+        );
+
+        try
+        {
+            var day = new DateOnly(2026, 10, 2);
+            var banks = new[]
+            {
+                new BankSource(
+                    "giro_DE11111111111111111111.csv",
+                    "dkb.giro",
+                    [new CorrelationEntry(0, day, "Some Person", 100m, "Sparen")]
+                ),
+                new BankSource(
+                    "tagesgeld_DE22222222222222222222.csv",
+                    "dkb.tagesgeld",
+                    [new CorrelationEntry(1, day, "Some Person", 100m, IsInflow: true)]
+                ),
+            };
+
+            var export = SiteExporter.Export(directory, [], banks, Audit());
+
+            StringAssert.Contains(Exported(export, "giro"), "Transfer : tagesgeld · 2222");
+            StringAssert.Contains(Exported(export, "tagesgeld"), "Transfer : giro · 1111");
+            StringAssert.Contains(File.ReadAllText(export.JsonPath), "Transfer : giro");
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+            {
+                Directory.Delete(directory, recursive: true);
+            }
+        }
+    }
+
+    private static string Exported(SiteExport export, string source) =>
+        File.ReadAllText(export.CsvPaths.Single(path => Path.GetFileName(path).StartsWith(source)));
+
     private static MailFacts Unrelated() =>
         new(
             new MailRecord(

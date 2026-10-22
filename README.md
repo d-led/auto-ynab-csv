@@ -158,6 +158,13 @@ exports alone, and the run says which half is missing instead of pretending.
    A memo is only filled with what the mail proves: without a confident match the row stays
 exactly as the bank wrote it.
 
+   Money moving between two of your own exported accounts is named after the account on the
+   other side of the crossing, and not after whoever the bank printed: the arrival reads
+   `Transfer : Girokonto · 9004`, the departure `Transfer : n26` — the payee YNAB itself gives a
+   transfer, so the import lands as a transfer instead of a payment to a person. The account
+   name is the file's own, so it matches your YNAB account if you named the account the same way.
+   The report names the same pair the same way in its `facts:` line.
+
    The page searches every entry with AND over its words (prefixes, substrings and one typo
    count too). Every value in a result is labelled (`merchant:`, `amount:`, `order:`, `file:`,
    `facts:`), and a transaction is listed together with the mails that prove it — a query finds

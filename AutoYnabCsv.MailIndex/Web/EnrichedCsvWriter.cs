@@ -25,27 +25,43 @@ public static class EnrichedCsvWriter
         var directory = Path.Combine(runDirectory, DirectoryName);
         Directory.CreateDirectory(directory);
 
+        var transfers = TransferNames.Of(banks);
         var taken = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        return banks.Select(bank => WriteOne(directory, bank, correlations, taken)).ToArray();
+        return banks
+            .Select(bank =>
+                WriteOne(directory, bank, RowsOf(bank, correlations, transfers), taken)
+            )
+            .ToArray();
     }
 
     private static string WriteOne(
         string directory,
         BankSource bank,
-        IReadOnlyList<Match> correlations,
+        IReadOnlyList<YnabImportEntry> rows,
         ISet<string> taken
     )
     {
         var path = Path.Combine(directory, UniqueName(bank.File, taken));
 
-        var rows = bank
-            .Entries.Select(entry => ImportRow(entry, MailsFor(entry, correlations)))
-            .ToArray();
-
         File.WriteAllText(path, YnabCsvExporter.Export(rows), Encoding.UTF8);
         return path;
     }
+
+    private static IReadOnlyList<YnabImportEntry> RowsOf(
+        BankSource bank,
+        IReadOnlyList<Match> correlations,
+        IReadOnlyDictionary<int, string> transfers
+    ) =>
+        bank
+            .Entries.Select(entry =>
+                ImportRow(
+                    entry,
+                    MailsFor(entry, correlations),
+                    transfers.GetValueOrDefault(entry.Index)
+                )
+            )
+            .ToArray();
 
     private static string UniqueName(string sourceFile, ISet<string> taken)
     {
@@ -60,13 +76,21 @@ public static class EnrichedCsvWriter
         return name;
     }
 
-    private static YnabImportEntry ImportRow(CorrelationEntry entry, IReadOnlyList<MailFacts> mails)
+    /// <summary>
+    /// A row of your own money moving between your accounts is named after the account it crossed
+    /// to, not after whoever the bank happened to print: there is no merchant to find.
+    /// </summary>
+    private static YnabImportEntry ImportRow(
+        CorrelationEntry entry,
+        IReadOnlyList<MailFacts> mails,
+        string? transfer
+    )
     {
         var enriched = EntryEnricher.Of(entry, mails);
 
         return new YnabImportEntry(
             entry.Date,
-            enriched.Payee,
+            transfer ?? enriched.Payee,
             enriched.Memo,
             entry.IsInflow ? entry.Amount : 0,
             entry.IsInflow ? 0 : entry.Amount

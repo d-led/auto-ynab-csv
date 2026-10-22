@@ -46,7 +46,7 @@ public static class SiteExporter
             mails
         );
         var evidence = Evidence(correlations, mails);
-        var documents = Documents(evidence, entries, correlations);
+        var documents = Documents(evidence, entries, correlations, TransferNames.Of(banks));
         var flows = Flows(banks);
         var json = JsonSerializer.Serialize(
             new
@@ -145,10 +145,10 @@ public static class SiteExporter
     private static IReadOnlyList<SiteDocument> Documents(
         IReadOnlyList<MailFacts> mails,
         (string File, CorrelationEntry Entry)[] entries,
-        IReadOnlyList<Match> correlations
+        IReadOnlyList<Match> correlations,
+        IReadOnlyDictionary<int, string> transfers
     )
     {
-        var transferNotes = TransferNotes(entries);
         var byEntry = correlations
             .GroupBy(match => match.Entry.Index)
             .ToDictionary(group => group.Key, group => (IReadOnlyList<Match>)group.ToArray());
@@ -167,7 +167,7 @@ public static class SiteExporter
                     file,
                     entry,
                     byEntry.GetValueOrDefault(entry.Index) ?? [],
-                    transferNotes.GetValueOrDefault(entry.Index)
+                    transfers.GetValueOrDefault(entry.Index)
                 )
             );
         }
@@ -201,27 +201,6 @@ public static class SiteExporter
             ))
             .OrderByDescending(flow => flow.Total)
             .ToArray();
-    }
-
-    private static IReadOnlyDictionary<int, string> TransferNotes(
-        IReadOnlyList<(string File, CorrelationEntry Entry)> entries
-    )
-    {
-        var sources = entries.ToDictionary(pair => pair.Entry.Index, pair => pair.File);
-        var notes = new Dictionary<int, string>();
-        var pairs = TransferDetector.Find(
-            entries.Select(entry => (entry.File, entry.Entry)).ToArray()
-        );
-
-        foreach (var pair in pairs)
-        {
-            notes[pair.Outgoing.Index] =
-                $"transfer to {Path.GetFileName(sources[pair.Incoming.Index])}";
-            notes[pair.Incoming.Index] =
-                $"transfer from {Path.GetFileName(sources[pair.Outgoing.Index])}";
-        }
-
-        return notes;
     }
 
     private static SiteDocument MailDocument(MailFacts facts) =>
