@@ -40,6 +40,15 @@ public static class EntryPatterns
         RegexOptions.Compiled | RegexOptions.IgnoreCase
     );
 
+    /// <summary>
+    /// A card statement being paid off: <c>KREDITKARTENABRECHNUNG VISA -ABR.</c> on the current
+    /// account, <c>Ausgleich Kreditkarte gem</c> on the card account.
+    /// </summary>
+    private static readonly Regex CardSettlement = new(
+        @"(Kreditkarten?abrechnung|Ausgleich\s+Kreditkarte)",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase
+    );
+
     public static EntryFacts Of(string payee, string memo)
     {
         var normalizedPayee = Collapse.Replace(payee, " ").Trim();
@@ -51,6 +60,13 @@ public static class EntryPatterns
             TransferWords.IsMatch(normalizedPayee) || TransferWords.IsMatch(memo)
         );
     }
+
+    /// <summary>
+    /// True when the row says it settles a card, rather than that something was bought. Read from
+    /// the row alone, so the pairing can allow for the days a settlement needs.
+    /// </summary>
+    public static bool IsCardSettlement(string payee, string memo) =>
+        CardSettlement.IsMatch(payee) || CardSettlement.IsMatch(memo);
 
     private static string MerchantOf(string payee, string memo) =>
         PaypalMerchantOf(memo)

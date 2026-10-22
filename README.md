@@ -163,7 +163,9 @@ exactly as the bank wrote it.
    `Transfer : Girokonto · 9004`, the departure `Transfer : n26` — the payee YNAB itself gives a
    transfer, so the import lands as a transfer instead of a payment to a person. The account
    name is the file's own, so it matches your YNAB account if you named the account the same way.
-   The report names the same pair the same way in its `facts:` line.
+   The report names the same pair the same way in its `facts:` line. A card settlement is paired
+   up to five days apart — the card account books the balance before the current account debits
+   it — because both rows say that is what they are.
 
    The page searches every entry with AND over its words (prefixes, substrings and one typo
    count too). Every value in a result is labelled (`merchant:`, `amount:`, `order:`, `file:`,

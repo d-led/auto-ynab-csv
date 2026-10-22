@@ -14,6 +14,13 @@ public static class TransferDetector
 {
     public const int DefaultDayWindow = 1;
 
+    /// <summary>
+    /// How far apart the two halves of a card settlement may be. The card account books the
+    /// balance it is owed days before the current account debits it, so a settlement lands
+    /// later than a move between two of your own books, which is the same day.
+    /// </summary>
+    public const int SettlementDayWindow = 5;
+
     public static IReadOnlyList<TransferPair> Find(
         IReadOnlyList<(string Source, CorrelationEntry Entry)> entries,
         int dayWindow = DefaultDayWindow
@@ -30,8 +37,7 @@ public static class TransferDetector
                     && !used.Contains(candidate.Entry.Index)
                     && !string.Equals(candidate.Source, source, StringComparison.Ordinal)
                     && candidate.Entry.Amount == outgoing.Amount
-                    && Math.Abs(candidate.Entry.Date.DayNumber - outgoing.Date.DayNumber)
-                        <= dayWindow
+                    && WithinReach(outgoing, candidate.Entry, dayWindow)
                 )
                 .OrderBy(candidate =>
                     Math.Abs(candidate.Entry.Date.DayNumber - outgoing.Date.DayNumber)
@@ -58,4 +64,20 @@ public static class TransferDetector
 
         return pairs;
     }
+
+    private static bool WithinReach(
+        CorrelationEntry outgoing,
+        CorrelationEntry incoming,
+        int dayWindow
+    ) =>
+        Math.Abs(incoming.Date.DayNumber - outgoing.Date.DayNumber)
+        <= (BothSettleACard(outgoing, incoming) ? SettlementDayWindow : dayWindow);
+
+    /// <summary>
+    /// Both sides have to say it, so the wide window a settlement needs cannot reach an ordinary
+    /// day where two equal amounts happen to sit four days apart.
+    /// </summary>
+    private static bool BothSettleACard(CorrelationEntry outgoing, CorrelationEntry incoming) =>
+        EntryPatterns.IsCardSettlement(outgoing.Payee, outgoing.Memo)
+        && EntryPatterns.IsCardSettlement(incoming.Payee, incoming.Memo);
 }
