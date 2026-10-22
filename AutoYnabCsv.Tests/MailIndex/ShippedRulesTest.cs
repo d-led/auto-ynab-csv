@@ -485,6 +485,45 @@ public class ShippedRulesTest
         Assert.AreEqual("74U00000NW000000G", facts.Fields["transactionId"]);
     }
 
+    [TestMethod]
+    public void AnAmazonDigestCarriesEveryOrderAndEveryTotalItAnnounces()
+    {
+        // One confirmation for two orders: the amounts are what a card row can be matched by, so
+        // both totals have to survive, not just the first order's.
+        var facts = FactsOf(
+            "ship-confirm@amazon.de",
+            "Thanks for your order",
+            "Thanks for your order!\n\nOrdered\nDispatched\nOut for delivery\nDelivered\n\n"
+                + "Arriving tomorrow 7 am – 11 am\n\nAlex – Musterstadt\n"
+                + "Order # \u200F000-0000000-0000001\nView or edit order\n\n"
+                + Parcel("Beispiel Gummiringe 100 Stück, stark, breit", "6,99")
+                + Parcel("Beispiel Gummiringe 100 Stück, dünn", "5,49")
+                + "Total€27,42\n\nArriving Tuesday\n\nAlex – Musterstadt\n"
+                + "Order # \u200F000-0000000-0000002\nView or edit order\n\n"
+                + Parcel("Beispiel Kleinbox mit Deckel, 12 Stück", "8,59")
+                + "Total€33,95\n\nAmazon.de is a trading name for Amazon EU Sarl."
+        );
+
+        CollectionAssert.AreEqual(
+            new[] { "000-0000000-0000001", "000-0000000-0000002" },
+            facts.OrderNumbers.ToArray()
+        );
+        CollectionAssert.IsSubsetOf(new[] { 27.42m, 33.95m }, facts.Amounts.ToArray());
+        CollectionAssert.AreEqual(
+            new[]
+            {
+                "Beispiel Gummiringe 100 Stück, stark, breit",
+                "Beispiel Gummiringe 100 Stück, dünn",
+                "Beispiel Kleinbox mit Deckel, 12 Stück",
+            },
+            facts.Items.ToArray()
+        );
+    }
+
+    /// <summary>One product of an order confirmation: title, seller, condition, quantity, price.</summary>
+    private static string Parcel(string title, string price) =>
+        $"{title}\nSold by Beispiel Versand\nCondition: New\nQuantity: 1\n€{price}\n\n";
+
     /// <summary>One parcel product as Amazon lays it out: picture, shortened link, seller.</summary>
     private static string ParcelItem(string title, string seller) =>
         "<table><tr>"
