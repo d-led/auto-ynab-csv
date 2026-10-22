@@ -100,8 +100,9 @@
     {
       "id": "paypal.payment",
       "sender": "paypal\\.",
-      // A receipt's subject is often just "Thomann GmbH: 193,80 € EUR", which names no action.
-      "subject": "(Zahlung|Payment|gesendet|sent|Receipt|Beleg|[0-9]+,[0-9]{2}\\s*€)",
+      // A receipt's subject is often just "Thomann GmbH: 193,80 € EUR", which names no action;
+      // a checkout names the order it belongs to.
+      "subject": "(Zahlung|Payment|gesendet|sent|Receipt|Beleg|Bestellung|[0-9]+,[0-9]{2}\\s*€)",
       "vendor": "PayPal",
       "fields": {
         // "Sie haben 67,32 € EUR an Takeaway.com Payment... gezahlt" — the party, not the rest
@@ -112,7 +113,11 @@
         "transactionId": "(?:Transaktionscode|Transaktions-ID|Transaktionsnummer|Transaction\\s*ID)\\D{0,12}((?-i:[A-Z0-9]{17}))",
         // the order number the merchant and the shop's own confirmation also quote
         "orderNumber": "(?:Bestellnummer|Order\\s*(?:number|no\\.?))\\D{0,12}([0-9]{6,20}(?:[.-][0-9]{3,8})?)",
-        "merchant": "(?:Ihr Einkauf bei|Händler|Verkäufer|Merchant)\\s*:?\\s*([^,\\r\\n]{2,60})"
+        // Who was paid, in the shapes PayPal writes it: a checkout names the shop under "Zahlung
+        // an" on the line below the label. "Händler" only counts as a label when the name is
+        // stuck to it or follows a colon — otherwise the word is the receipt talking about itself
+        // ("wenn der Händler Ihre Bestellung abgewickelt hat"), and the sentence is no payee.
+        "merchant": "(?:Zahlung\\s+an\\s*:?\\s*|Ihr Einkauf bei\\s+|(?:Verkäufer|Merchant)\\s*:?[ \\t]*|Händler(?!\\s)(?::[ \\t]*)?)([^\\r\\n]{2,60})"
       }
     },
     {

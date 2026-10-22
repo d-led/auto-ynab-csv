@@ -466,6 +466,25 @@ public class ShippedRulesTest
         Assert.AreEqual("Kytary", facts.Fields["merchant"]);
     }
 
+    [TestMethod]
+    public void APaypalCheckoutNamesTheShopUnderZahlungAnAndNotTheSentenceAroundIt()
+    {
+        // The receipt talks about itself — "wenn der Händler Ihre Bestellung abgewickelt hat" —
+        // before it names the shop on the line below "Zahlung an". Only the second is a payee.
+        var facts = FactsOf(
+            "service@paypal.de",
+            "Ihre Bestellung bei Beispiel Airlines S.A.",
+            "Alex Beispiel, danke, dass Sie mit PayPal gezahlt haben\n\n"
+                + "Hier sind die Details zu Ihrem Einkauf. Wir setzen uns ggf. mit Ihnen in "
+                + "Verbindung, wenn der Händler Ihre Bestellung abgewickelt hat.\n\n"
+                + "Details Ihres Einkaufs\n\nZahlung von\n\nAlex Beispiel\n\nZahlung an\n\n"
+                + "Beispiel Airlines S.A.\n\nTransaktionscode\n74U00000NW000000G"
+        );
+
+        Assert.AreEqual("Beispiel Airlines S.A.", facts.Fields["merchant"]);
+        Assert.AreEqual("74U00000NW000000G", facts.Fields["transactionId"]);
+    }
+
     /// <summary>One parcel product as Amazon lays it out: picture, shortened link, seller.</summary>
     private static string ParcelItem(string title, string seller) =>
         "<table><tr>"
