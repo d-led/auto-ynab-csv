@@ -438,6 +438,39 @@ public class MailSyncServiceTest
         Assert.IsNull(MailSyncService.Read(gone, RuleSetLoader.Shipped()));
     }
 
+    [TestMethod]
+    public void AMessageDatedInTheFutureIsDatedByItsFileInstead()
+    {
+        // A broken import once wrote 2242-03-19 for a whole batch of messages. Such a message
+        // would sit outside every search window and stretch the index to the year 2243.
+        WithStore(
+            root =>
+            {
+                var directory = MessageFolder(root);
+                Directory.CreateDirectory(directory);
+                var payload = TestEmlx.Message(
+                    "Re: Tresor",
+                    "archive@example.com",
+                    "nur ein Archiv",
+                    new DateTimeOffset(2242, 3, 19, 13, 28, 33, TimeSpan.Zero)
+                );
+                File.WriteAllBytes(
+                    Path.Combine(directory, "1.emlx"),
+                    TestEmlx.Build(payload, receivedAt: 8_592_000_000)
+                );
+            },
+            (root, indexPath) =>
+            {
+                using var index = MailIndexStore.Open(indexPath);
+                MailSyncService.Sync(index, root, RuleSetLoader.Shipped());
+
+                var stored = index.LoadFacts().Single().Mail.ReceivedAt;
+
+                Assert.IsTrue(stored.Year >= 1990 && stored <= DateTimeOffset.UtcNow.AddDays(1));
+            }
+        );
+    }
+
     private static void WithStore(Action<string> prepare, Action<string, string> use)
     {
         var folder = Path.Combine(

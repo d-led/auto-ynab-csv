@@ -275,6 +275,22 @@ public static class MailSyncService
 
     private static MailFacts? ReadFacts(EmlxFile file, ExtractionRuleSet rules)
     {
-        return SignalExtractor.Extract(MessageParser.Parse(EmlxReader.Read(file.Path)), rules);
+        var facts = SignalExtractor.Extract(MessageParser.Parse(EmlxReader.Read(file.Path)), rules);
+
+        return WithPlausibleDate(facts, file);
     }
+
+    /// <summary>
+    /// The date the message really has, or the file's own if the message's cannot be true.
+    /// A broken import writes one absurd timestamp for a whole batch — 116 messages here share
+    /// 2242-03-19 — and such a message would sit outside every search window forever.
+    /// </summary>
+    private static MailFacts WithPlausibleDate(MailFacts facts, EmlxFile file) =>
+        Plausible(facts.Mail.ReceivedAt)
+            ? facts
+            : facts with { Mail = facts.Mail with { ReceivedAt = file.LastWriteUtc } };
+
+    /// <summary>Nothing was mailed before 1990, and nothing will be mailed tomorrow.</summary>
+    private static bool Plausible(DateTimeOffset when) =>
+        when.Year >= 1990 && when <= DateTimeOffset.UtcNow.AddDays(1);
 }

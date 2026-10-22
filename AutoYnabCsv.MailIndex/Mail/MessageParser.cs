@@ -5,10 +5,11 @@ namespace AutoYnabCsv.MailIndex.Mail;
 public static class MessageParser
 {
     /// <summary>
-    /// The shape of the text this parser yields. Bump it whenever that shape changes, so an index
-    /// built by an older reading is read again rather than trusted.
+    /// What this parser yields. Bump it whenever that changes — the shape of the text, or which
+    /// dates are believed — so an index built by an older reading is read again rather than
+    /// trusted.
     /// </summary>
-    public const string TextVersion = "lines-1";
+    public const string ReadingVersion = "dates-2";
 
     public static MailRecord Parse(EmlxMessage emlx)
     {

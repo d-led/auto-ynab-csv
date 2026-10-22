@@ -216,7 +216,7 @@ public sealed class ExtractionRuleSet
                         .OrderBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase)
                         .Select(pair => $"{pair.Key}={pair.Value}")
                 )
-                .Concat([MessageParser.TextVersion])
+                .Concat([MessageParser.ReadingVersion])
         );
 
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text)));
