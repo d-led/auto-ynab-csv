@@ -289,6 +289,26 @@ public class EntryEnricherTest
         Assert.AreEqual(EntryEnricher.MaxMemoLength, enriched.Memo.Length);
     }
 
+    [TestMethod]
+    public void TheShopTheMailNamesBeatsTheLegalEntityTheBankPrints()
+    {
+        // A row that says "AUDIO PARTNER s.r.o." categorizes nothing; the receipt knows it is
+        // the music shop, and the order number leads what is left of the memo.
+        var mail = Mail(
+            vendor: "Kytary",
+            orderNumbers: ["OBJ20000001"],
+            fields: new Dictionary<string, string> { ["merchant"] = "Kytary" }
+        );
+
+        var enriched = EntryEnricher.Of(
+            Entry("AUDIO PARTNER s.r.o.", 137.40m, memo: "AUDIO PARTNER s.r.o. OBJ20000001"),
+            mail
+        );
+
+        Assert.AreEqual("Kytary", enriched.Payee);
+        Assert.AreEqual("Order OBJ20000001 · AUDIO PARTNER s.r.o.", enriched.Memo);
+    }
+
     private static string First(EnrichedEntry enriched) => enriched.Memo.Split(" · ")[0];
 
     private static CorrelationEntry Entry(string payee, decimal amount, string memo = "") =>

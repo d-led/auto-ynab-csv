@@ -71,6 +71,7 @@ public class RuleSetLoaderTest
                 "paypal.received",
                 "ebay.order",
                 "thomann.order",
+                "kytary.order",
                 "db.booking",
                 "kleinanzeigen.sale",
             },

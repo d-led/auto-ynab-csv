@@ -430,6 +430,42 @@ public class ShippedRulesTest
         CollectionAssert.Contains(facts.OrderNumbers.ToArray(), "000-0000000-0000001");
     }
 
+    [TestMethod]
+    public void AKytaryReceiptNamesTheShopTheBankOnlyPrintsAsItsLegalEntity()
+    {
+        // The bank writes "AUDIO PARTNER s.r.o."; only the mail says whose shop that is.
+        var facts = FactsOf(
+            "kommunikation@kytary.de",
+            "Zahlung erhalten",
+            "Sehr geehrter Kunde,\n"
+                + "wir haben soeben Ihre 137,40 € Zahlung erhalten OBJ20000001.\n\n"
+                + "Vielen Dank.\n\nAUDIO PARTNER s.r.o.\nKytary.de\nKundenhotline: 089 370 401 12"
+        );
+
+        Assert.AreEqual("Kytary", facts.Vendor);
+        Assert.AreEqual("Kytary", facts.Fields["merchant"]);
+        Assert.AreEqual("OBJ20000001", facts.Fields["orderNumber"]);
+        Assert.AreEqual("137,40", facts.Fields["total"]);
+    }
+
+    [TestMethod]
+    public void AKytaryConfirmationQuotesTheOrderNumberItsReceiptQuotes()
+    {
+        // The confirmation names no action in its subject that a rule could rely on, and the
+        // goods themselves are in the attached PDF; the number is what ties the two mails
+        // together and what the row is searched by.
+        var facts = FactsOf(
+            "kommunikation@kytary.de",
+            "Ihre Bestellung",
+            "vielen Dank für Ihre Bestellung OBJ20000001 vom 27.03.2026 15:39 im e-Shop "
+                + "Kytary.de.\n\nDie Kopie der Bestellung finden Sie in der Anlage (PDF).\n\n"
+                + "https://kytary.de/Order/Order/?number=OBJ20000001-92210081082B871F7151CBA3"
+        );
+
+        CollectionAssert.Contains(facts.OrderNumbers.ToArray(), "OBJ20000001");
+        Assert.AreEqual("Kytary", facts.Fields["merchant"]);
+    }
+
     /// <summary>One parcel product as Amazon lays it out: picture, shortened link, seller.</summary>
     private static string ParcelItem(string title, string seller) =>
         "<table><tr>"

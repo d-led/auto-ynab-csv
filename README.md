@@ -258,7 +258,8 @@ The shipped file is read first, then the same file name is laid over it, nearest
 - the nearest `.auto-ynab-csv/patterns.jsonc` in a parent of the working directory.
 
 Merging is **by rule id**, so a file with one rule replaces that rule and leaves the others
-(`amazon.order`, `paypal.payment`, `thomann.order`, `db.booking`, `kleinanzeigen.sale`) alone, and
+(`amazon.order`, `paypal.payment`, `thomann.order`, `kytary.order`, `db.booking`,
+`kleinanzeigen.sale`) alone, and
 a rule with a new id is simply added. A copy in your config wins over a later change to the
 shipped rule — delete it to get the shipped version back.
 
