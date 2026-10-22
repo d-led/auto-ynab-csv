@@ -4,7 +4,6 @@ using System.Threading.Tasks;
 using AutoYnabCsv.DesktopApp.ViewModels;
 using Avalonia.Controls;
 using Avalonia.Input;
-using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using ReactiveUI;
 
@@ -46,11 +45,21 @@ public partial class MainWindow : Window, IViewFor<MainWindowViewModel>
 
     public MainWindowViewModel? ViewModel { get; set; }
 
-    private void OnShowIndex(object? sender, RoutedEventArgs e) => ViewModel?.RevealIndex();
+    private async void OnEditConfig(object? sender, RoutedEventArgs e)
+    {
+        var dialog = new ConfigWindow();
+        await dialog.ShowDialog(this);
 
-    private void OnShowConfig(object? sender, RoutedEventArgs e) => ViewModel?.RevealConfig();
+        ViewModel?.Report(dialog.ViewModel.Outcome);
+    }
 
-    private void OnShowExport(object? sender, RoutedEventArgs e) => ViewModel?.RevealExport();
+    private void OnShowLocation(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button { DataContext: LocationRow location })
+        {
+            ViewModel?.Show(location);
+        }
+    }
 
     private async void OnIndexMail(object? sender, RoutedEventArgs e)
     {
@@ -65,20 +74,6 @@ public partial class MainWindow : Window, IViewFor<MainWindowViewModel>
         if (ViewModel is { } viewModel)
         {
             await viewModel.ExportReportAsync();
-        }
-    }
-
-    private async void OnCopyPath(object? sender, RoutedEventArgs e)
-    {
-        if (sender is not Button { DataContext: LocationRow row })
-        {
-            return;
-        }
-
-        var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
-        if (clipboard is not null)
-        {
-            await clipboard.SetTextAsync(row.Path);
         }
     }
 }

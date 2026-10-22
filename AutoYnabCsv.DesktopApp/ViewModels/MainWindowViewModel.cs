@@ -36,13 +36,17 @@ public class MainWindowViewModel : ViewModelBase
         set => this.RaiseAndSetIfChanged(ref _mailStatus, value);
     }
 
-    /// <summary>Everything the app keeps, as table rows so each path can be read and copied.</summary>
+    /// <summary>Where this app keeps what it keeps, as table rows a person can select and copy.</summary>
     public IReadOnlyList<LocationRow> Locations
     {
         get => _locations;
         private set => this.RaiseAndSetIfChanged(ref _locations, value);
     }
 
+    /// <summary>
+    /// A drop converts each file beside itself, then writes one run: the page, the audit trail and
+    /// the YNAB rows, in the folder the files came from.
+    /// </summary>
     public async Task ProcessDropOf(IEnumerable<string> files)
     {
         _lastDropped = files.ToArray();
@@ -64,20 +68,36 @@ public class MainWindowViewModel : ViewModelBase
         await WriteReportAsync();
     }
 
-    public void RevealIndex() =>
-        WithSystem.OpenFolder(Path.GetDirectoryName(MailIndexStore.DefaultPath())!);
+    /// <summary>Shows one of the listed places: the file itself if it is a file, else its folder.</summary>
+    public void Show(LocationRow location)
+    {
+        if (File.Exists(location.Path))
+            WithSystem.RevealFile(location.Path);
+        else
+            WithSystem.OpenFolder(location.Path);
+    }
 
-    public void RevealConfig() => WithSystem.OpenFolder(AppDirectories.ConfigDirectory());
+    /// <summary>A line in the status bar about something that happened in another window.</summary>
+    public void Report(string message)
+    {
+        if (message.Length > 0)
+            MailStatus = message;
+    }
 
-    public void RevealExport() => WithSystem.OpenFolder(ReportLocation.For(_lastDropped));
+    /// <summary>The places the app keeps things, and the run folder once a drop has said where.</summary>
+    private static IReadOnlyList<LocationRow> LocationsFor(IReadOnlyList<string> dropped)
+    {
+        var locations = new List<LocationRow>
+        {
+            new("index", MailIndexStore.DefaultPath()),
+            new("config", Path.Combine(AppDirectories.ConfigDirectory(), RuleSetLoader.FileName)),
+        };
 
-    /// <summary>The places the app reads and writes, with the report beside the dropped files.</summary>
-    private static IReadOnlyList<LocationRow> LocationsFor(IReadOnlyList<string> dropped) =>
-    [
-        new("index", MailIndexStore.DefaultPath()),
-        new("config", Path.Combine(AppDirectories.ConfigDirectory(), RuleSetLoader.FileName)),
-        new("report", ReportLocation.For(dropped)),
-    ];
+        if (dropped.Count > 0)
+            locations.Add(new LocationRow("report", ReportLocation.For(dropped)));
+
+        return locations;
+    }
 
     /// <summary>
     /// Indexes Apple Mail from inside the app, which is the process that needs Full Disk Access.

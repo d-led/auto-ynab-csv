@@ -30,7 +30,7 @@
                  Text="{Binding Log}">
         </TextBox>
         <StackPanel Grid.Row="2" Margin="10,0,10,10" Spacing="6">
-            <TextBlock Text="Nothing to configure: dropped files convert next to themselves."
+            <TextBlock Text="Dropped files convert next to themselves; the report for a run lands in auto-ynab-report/ in the folder of the first file dropped."
                        TextWrapping="Wrap" FontSize="12"></TextBlock>
             <ItemsControl ItemsSource="{Binding Locations}">
                 <ItemsControl.ItemTemplate>
@@ -41,16 +41,14 @@
                             <SelectableTextBlock Grid.Column="1" Text="{Binding Path}"
                                                  FontFamily="Menlo, Consolas, monospace" FontSize="11"
                                                  TextWrapping="Wrap"></SelectableTextBlock>
-                            <Button Grid.Column="2" Content="Copy" FontSize="11" Padding="8,2"
-                                    Margin="8,0,0,0" Click="OnCopyPath"></Button>
+                            <Button Grid.Column="2" Content="Show" FontSize="11" Padding="8,2"
+                                    Margin="8,0,0,0" Click="OnShowLocation"></Button>
                         </Grid>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
             <WrapPanel Orientation="Horizontal">
-                <Button Content="Show index" Click="OnShowIndex" Margin="0,0,6,6"></Button>
-                <Button Content="Show config" Click="OnShowConfig" Margin="0,0,6,6"></Button>
-                <Button Content="Show export" Click="OnShowExport" Margin="0,0,6,6"></Button>
+                <Button Content="Config…" Click="OnEditConfig" Margin="0,0,6,6"></Button>
                 <Button Content="Index mail" Click="OnIndexMail" Margin="0,0,6,6"></Button>
                 <Button Content="Export report" Click="OnExportReport" Margin="0,0,6,6"></Button>
             </WrapPanel>

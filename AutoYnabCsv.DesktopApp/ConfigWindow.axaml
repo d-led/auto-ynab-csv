@@ -1,0 +1,38 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="700"
+        x:Class="AutoYnabCsv.DesktopApp.ConfigWindow"
+        xmlns:vm="using:AutoYnabCsv.DesktopApp.ViewModels"
+        x:DataType="vm:ConfigViewModel"
+        Title="Patterns"
+        Width="900"
+        Height="700"
+        Padding="10">
+
+    <Grid RowDefinitions="Auto,*,Auto,Auto">
+        <StackPanel Grid.Row="0" Margin="0,0,0,8" Spacing="4">
+            <SelectableTextBlock Text="{Binding FilePath}"
+                                 FontFamily="Menlo, Consolas, monospace" FontSize="11"></SelectableTextBlock>
+            <TextBlock FontSize="11" Foreground="Gray" TextWrapping="Wrap"
+                       Text="The text is read back through the same loader the reports use, and only text that loads replaces the file. A saved change makes the next report re-read the mailbox."></TextBlock>
+        </StackPanel>
+        <TextBox Grid.Row="1"
+                 Text="{Binding Text}"
+                 AcceptsReturn="True"
+                 AcceptsTab="True"
+                 FontFamily="Menlo, Consolas, monospace"
+                 FontSize="12"
+                 VerticalContentAlignment="Top"
+                 HorizontalAlignment="Stretch"
+                 VerticalAlignment="Stretch"></TextBox>
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="6" Margin="0,8,0,0">
+            <Button Content="Save" Click="OnSave"></Button>
+            <Button Content="Revert" Click="OnRevert"></Button>
+            <Button Content="Show folder" Click="OnShowFolder"></Button>
+            <Button Content="Close" Click="OnClose"></Button>
+        </StackPanel>
+        <TextBlock Grid.Row="3" Text="{Binding Status}" FontSize="11" TextWrapping="Wrap" Margin="0,8,0,0"></TextBlock>
+    </Grid>
+</Window>
