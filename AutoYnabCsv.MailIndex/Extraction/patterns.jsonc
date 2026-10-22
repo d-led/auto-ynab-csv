@@ -90,11 +90,11 @@
       "fields": {
         "orderNumber": "\\b\\d{3}-\\d{7}-\\d{7}\\b",
         // The last resort, for the mails that list titles as plain lines instead of the shapes
-        // above. A title is a long line of words that is not one of the sentences around it
-        // ("Your package was delivered!", "Return or replace items in Your Orders.", the
-        // trading-name footer), which all end in punctuation — and it is never a link: the
-        // footer's "Your Orders", "Your Account" and "Buy Again" are URLs with a label in front.
-        "items": "(?m)^(?!Order)(?!.*(?:https?://|www\\.))(?=[^\\r\\n]*\\s\\S)(?<item>[A-Za-z0-9ÄÖÜäöü][^!\\r\\n]{24,190}[^.!\\s])$"
+        // above. A title ends like a title — a letter, a number or a closing bracket, never a
+        // full stop, an exclamation mark or a colon — and it is never the mail talking about
+        // itself ("Return or replace items in Your Orders:", "Amazon.de Order Confirmation"),
+        // never a link, and never the footer's label-in-front-of-URL rows.
+        "items": "(?m)^(?!Order)(?!.*(?:https?://|www\\.))(?![^\\r\\n]*(?:Return or replace|Order Confirmation|View or edit order|Track package|Buy Again|Your Account|Your Orders))(?=[^\\r\\n]*\\s\\S)(?<item>[A-Za-z0-9ÄÖÜäöü][^!\\r\\n]{24,190}[\\p{L}\\p{N})])$"
       }
     },
     {

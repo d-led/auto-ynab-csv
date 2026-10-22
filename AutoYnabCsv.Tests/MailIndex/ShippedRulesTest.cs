@@ -520,6 +520,27 @@ public class ShippedRulesTest
         );
     }
 
+    [TestMethod]
+    public void AMailTalkingAboutTheOrderIsNotSomethingThatWasBought()
+    {
+        // "Return or replace items in Your Orders:" and "Amazon.de Order Confirmation" are long
+        // lines in the same shape as a title; what separates them is how they end and what they
+        // say, and neither belongs in a memo.
+        var facts = FactsOf(
+            "ship-confirm@amazon.de",
+            "Your order is on its way",
+            "Your order is on its way!\n\n"
+                + "Return or replace items in Your Orders:\n\n"
+                + "Beispiel Gitarren-Pedal 10 Watt mit Netzteil\n\n"
+                + "Amazon.de Order Confirmation\n"
+        );
+
+        CollectionAssert.AreEqual(
+            new[] { "Beispiel Gitarren-Pedal 10 Watt mit Netzteil" },
+            facts.Items.ToArray()
+        );
+    }
+
     /// <summary>One product of an order confirmation: title, seller, condition, quantity, price.</summary>
     private static string Parcel(string title, string price) =>
         $"{title}\nSold by Beispiel Versand\nCondition: New\nQuantity: 1\n€{price}\n\n";
