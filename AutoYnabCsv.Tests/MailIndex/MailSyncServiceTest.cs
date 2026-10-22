@@ -65,13 +65,20 @@ public class MailSyncServiceTest
                     new[] { $"NoLengthLine  {Path.Combine(MessageFolder(root), "2.emlx")}" },
                     report.UnreadableLines().ToArray()
                 );
+
+                // Both messages are named while they are read. Which one comes first is the file
+                // system's business, not the sync's, so the test does not say.
+                CollectionAssert.AreEquivalent(
+                    new[] { "1.emlx", "2.emlx" },
+                    seen.Select(progress => Path.GetFileName(progress.Reading))
+                        .Distinct()
+                        .ToArray()
+                );
                 Assert.AreEqual(2, seen[^1].Seen);
                 Assert.AreEqual(2, seen[^1].Total);
-                StringAssert.EndsWith(seen[^1].Reading, "2.emlx");
 
                 // The first word about a message comes before it is read, so a slow one is named
                 // while it is slow rather than once it is done.
-                StringAssert.EndsWith(seen[0].Reading, "1.emlx");
                 Assert.AreEqual(0, seen[0].Indexed);
                 Assert.IsTrue(seen[^1].ReadMilliseconds >= 0);
             }
