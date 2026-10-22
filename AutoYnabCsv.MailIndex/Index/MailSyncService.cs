@@ -26,9 +26,10 @@ public sealed record MailSyncReport(
     public const int Named = 5;
 
     public string Describe() =>
-        $"{(Result.Rebuilt ? "Rebuilt" : "Updated")}: indexed {Result.Indexed}, "
+        $"{(Result.Cancelled ? "Stopped early" : Result.Rebuilt ? "Rebuilt" : "Updated")}: indexed {Result.Indexed}, "
         + $"skipped {Result.Skipped}, removed {Result.Removed}, unreadable {Result.Unreadable}. "
-        + Coverage;
+        + Coverage
+        + (Result.Cancelled ? " The next run carries on from here." : string.Empty);
 
     /// <summary>
     /// The messages the index could not read, named one by one: a count says nothing a person can
@@ -80,7 +81,8 @@ public static class MailSyncService
         DateTimeOffset? since = null,
         bool forceFull = false,
         Action<SyncStart>? starting = null,
-        Action<SyncProgress>? progress = null
+        Action<SyncProgress>? progress = null,
+        CancellationToken cancellation = default
     )
     {
         var rebuildNeeded = forceFull || store.Fingerprint != rules.Fingerprint;
@@ -113,7 +115,8 @@ public static class MailSyncService
             forceFull,
             pruneMissing: window is null,
             progress: progress,
-            unreadableMessage: failures.Enqueue
+            unreadableMessage: failures.Enqueue,
+            cancellation: cancellation
         );
 
         return new MailSyncReport(

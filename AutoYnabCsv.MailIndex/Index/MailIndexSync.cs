@@ -10,7 +10,8 @@ public sealed record SyncResult(
     int Skipped,
     int Removed,
     int Unreadable,
-    bool Rebuilt
+    bool Rebuilt,
+    bool Cancelled = false
 );
 
 /// <summary>How far a sync has come, so a long first run is not a silent one.</summary>
@@ -62,56 +63,99 @@ public static class MailIndexSync
         bool pruneMissing = true,
         Action<SyncProgress>? progress = null,
         Action<UnreadableMessage>? unreadableMessage = null,
-        int? readTimeoutMilliseconds = null
+        int? readTimeoutMilliseconds = null,
+        CancellationToken cancellation = default
+    ) =>
+        new Sweep(
+            store,
+            files as IReadOnlyList<EmlxFile> ?? files.ToArray(),
+            read,
+            rulesFingerprint,
+            forceFull,
+            pruneMissing,
+            progress,
+            unreadableMessage,
+            readTimeoutMilliseconds
+        ).Execute(cancellation);
+
+    /// <summary>
+    /// One pass over the listed messages. The counters, the batch and the store calls live here, so
+    /// the pass reads as what it does: read a message, keep what it says, or leave it for the
+    /// report.
+    /// </summary>
+    private sealed class Sweep(
+        MailIndexStore store,
+        IReadOnlyList<EmlxFile> batch,
+        Func<EmlxFile, MailFacts?> read,
+        string rulesFingerprint,
+        bool forceFull,
+        bool pruneMissing,
+        Action<SyncProgress>? progress,
+        Action<UnreadableMessage>? unreadableMessage,
+        int? readTimeoutMilliseconds
     )
     {
-        var batch = files as IReadOnlyList<EmlxFile> ?? files.ToArray();
-        var known = store.KnownFiles();
-        var rebuilt = forceFull || store.Fingerprint != rulesFingerprint;
+        private readonly IReadOnlyDictionary<string, FileState> _known = store.KnownFiles();
+        private readonly HashSet<string> _seen = new(StringComparer.Ordinal);
+        private readonly List<(EmlxFile File, MailFacts Facts)> _pending = new(BatchSize);
+        private readonly bool _rebuilt = forceFull || store.Fingerprint != rulesFingerprint;
 
-        if (rebuilt)
+        private int _indexed;
+        private int _skipped;
+        private int _unreadable;
+
+        public SyncResult Execute(CancellationToken cancellation)
         {
-            store.StartRebuild(rulesFingerprint);
-        }
-        else
-        {
-            store.Fingerprint = rulesFingerprint;
-        }
-
-        var seen = new HashSet<string>(StringComparer.Ordinal);
-        var pending = new List<(EmlxFile File, MailFacts Facts)>(BatchSize);
-        var indexed = 0;
-        var skipped = 0;
-        var unreadable = 0;
-
-        SyncProgress Report(EmlxFile file, long readMilliseconds, bool timedOut) =>
-            new(
-                seen.Count,
-                batch.Count,
-                indexed,
-                skipped,
-                unreadable,
-                store.DiskBytes,
-                file.Path,
-                readMilliseconds,
-                file.Length,
-                timedOut
-            );
-
-        foreach (var file in batch)
-        {
-            seen.Add(file.Path);
-
-            if (Unchanged(file, known, rebuilt))
+            if (_rebuilt)
             {
-                skipped++;
-                progress?.Invoke(Report(file, 0, false));
-                continue;
+                store.StartRebuild(rulesFingerprint);
+            }
+            else
+            {
+                store.Fingerprint = rulesFingerprint;
+            }
+
+            foreach (var file in batch)
+            {
+                if (cancellation.IsCancellationRequested)
+                {
+                    store.UpsertBatch(_pending);
+                    return new SyncResult(
+                        _indexed,
+                        _skipped,
+                        0,
+                        _unreadable,
+                        _rebuilt,
+                        Cancelled: true
+                    );
+                }
+
+                Read(file);
+            }
+
+            store.UpsertBatch(_pending);
+
+            var removed = _rebuilt || !pruneMissing ? 0 : store.RemoveMissing(_seen);
+            store.MarkSynced(DateTimeOffset.UtcNow);
+            store.RebuildUnfinished = false;
+
+            return new SyncResult(_indexed, _skipped, removed, _unreadable, _rebuilt);
+        }
+
+        private void Read(EmlxFile file)
+        {
+            _seen.Add(file.Path);
+
+            if (Unchanged(file))
+            {
+                _skipped++;
+                Report(file, 0, false);
+                return;
             }
 
             // Named before it is read: a message that takes minutes has to be on screen while it
             // is being read, not only once it is done.
-            progress?.Invoke(Report(file, 0, false));
+            Report(file, 0, false);
 
             var (facts, took, timedOut) = ReadTimed(
                 file,
@@ -126,36 +170,61 @@ public static class MailIndexSync
 
             if (facts is null)
             {
-                unreadable++;
+                _unreadable++;
             }
             else
             {
-                indexed++;
-                Collect(store, pending, file, facts);
+                _indexed++;
+                Collect(file, facts);
             }
 
-            progress?.Invoke(Report(file, took, timedOut));
+            Report(file, took, timedOut);
         }
 
-        store.UpsertBatch(pending);
+        /// <summary>A message already read, unchanged in content and time, needs reading no more.</summary>
+        private bool Unchanged(EmlxFile file) =>
+            !_rebuilt
+            && _known.TryGetValue(file.Path, out var state)
+            && state.ModifiedTicks == file.LastWriteUtc.UtcTicks
+            && state.Length == file.Length;
 
-        var removed = rebuilt || !pruneMissing ? 0 : store.RemoveMissing(seen);
-        store.MarkSynced(DateTimeOffset.UtcNow);
-        store.RebuildUnfinished = false;
+        private void Report(EmlxFile file, long readMilliseconds, bool timedOut)
+        {
+            if (progress is null)
+            {
+                return;
+            }
 
-        return new SyncResult(indexed, skipped, removed, unreadable, rebuilt);
+            progress(
+                new SyncProgress(
+                    _seen.Count,
+                    batch.Count,
+                    _indexed,
+                    _skipped,
+                    _unreadable,
+                    store.DiskBytes,
+                    file.Path,
+                    readMilliseconds,
+                    file.Length,
+                    timedOut
+                )
+            );
+        }
+
+        /// <summary>Writes a full batch when the batch is full, so a commit stays short.</summary>
+        private void Collect(EmlxFile file, MailFacts facts)
+        {
+            _pending.Add((file, facts));
+
+            if (_pending.Count < BatchSize)
+            {
+                return;
+            }
+
+            store.UpsertBatch(_pending);
+            _pending.Clear();
+        }
     }
-
-    /// <summary>A message already read, unchanged in content and time, needs reading no more.</summary>
-    private static bool Unchanged(
-        EmlxFile file,
-        IReadOnlyDictionary<string, FileState> known,
-        bool rebuilt
-    ) =>
-        !rebuilt
-        && known.TryGetValue(file.Path, out var state)
-        && state.ModifiedTicks == file.LastWriteUtc.UtcTicks
-        && state.Length == file.Length;
 
     private static (MailFacts? Facts, long Milliseconds, bool TimedOut) ReadTimed(
         EmlxFile file,
@@ -180,23 +249,4 @@ public static class MailIndexSync
 
     private static long Elapsed(long started) =>
         (long)Stopwatch.GetElapsedTime(started).TotalMilliseconds;
-
-    /// <summary>Writes a full batch when the batch is full, so a commit stays short.</summary>
-    private static void Collect(
-        MailIndexStore store,
-        List<(EmlxFile File, MailFacts Facts)> pending,
-        EmlxFile file,
-        MailFacts facts
-    )
-    {
-        pending.Add((file, facts));
-
-        if (pending.Count < BatchSize)
-        {
-            return;
-        }
-
-        store.UpsertBatch(pending);
-        pending.Clear();
-    }
 }

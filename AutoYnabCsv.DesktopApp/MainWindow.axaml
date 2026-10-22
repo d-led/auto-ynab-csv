@@ -8,30 +8,36 @@
         x:DataType="vm:MainWindowViewModel"
         Title="AutoYnabCsv.DesktopApp"
         MinWidth="560"
-        MinHeight="380"
+        MinHeight="420"
         MaxHeight="1200"
         MaxWidth="1700"
-        Width="640"
-        Height="600"
+        Width="680"
+        Height="640"
         Padding="10">
 
-    <Grid DragDrop.AllowDrop="True">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"></RowDefinition>
-            <RowDefinition Height="*"></RowDefinition>
-            <RowDefinition Height="Auto"></RowDefinition>
-        </Grid.RowDefinitions>
-        <TextBlock Grid.Row="0" Margin="10">
-            Drop exported CSV files here
-        </TextBlock>
+    <Grid DragDrop.AllowDrop="True" RowDefinitions="Auto,*,Auto,Auto,Auto,Auto">
+        <StackPanel Grid.Row="0" Margin="10" Spacing="2">
+            <TextBlock Text="Drop exported CSV files here"></TextBlock>
+            <TextBlock Text="Each file converts next to itself; the run for a drop — page, audit trail and YNAB rows — lands in auto-ynab-report/ in the folder of the first file."
+                       TextWrapping="Wrap" FontSize="11" Foreground="Gray"></TextBlock>
+        </StackPanel>
+
         <TextBox Grid.Row="1" AcceptsReturn="True" IsReadOnly="True" HorizontalAlignment="Stretch"
                  VerticalAlignment="Stretch"
-                 Margin="10" Padding="10"
-                 Text="{Binding Log}">
-        </TextBox>
-        <StackPanel Grid.Row="2" Margin="10,0,10,10" Spacing="6">
-            <TextBlock Text="Dropped files convert next to themselves; the report for a run lands in auto-ynab-report/ in the folder of the first file dropped."
-                       TextWrapping="Wrap" FontSize="12"></TextBlock>
+                 Margin="10,0,10,10" Padding="10"
+                 Text="{Binding Log}"></TextBox>
+
+        <ProgressBar Grid.Row="2" Margin="10,0,10,4" Height="6"
+                     Minimum="0" Maximum="1"
+                     Value="{Binding IndexProgress}"
+                     IsIndeterminate="{Binding IndexProgressUnknown}"
+                     IsVisible="{Binding IsIndexing}"></ProgressBar>
+
+        <TextBlock Grid.Row="3" Margin="10,0,10,4" FontSize="11" TextWrapping="Wrap"
+                   Text="{Binding IndexStatus}"
+                   IsVisible="{Binding IsIndexing}"></TextBlock>
+
+        <StackPanel Grid.Row="4" Margin="10,0,10,0" Spacing="6">
             <ItemsControl ItemsSource="{Binding Locations}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:LocationRow">
@@ -47,9 +53,15 @@
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
+        </StackPanel>
+
+        <StackPanel Grid.Row="5" Margin="10" Spacing="6">
             <WrapPanel Orientation="Horizontal">
                 <Button Content="Config…" Click="OnEditConfig" Margin="0,0,6,6"></Button>
-                <Button Content="Index mail" Click="OnIndexMail" Margin="0,0,6,6"></Button>
+                <Button Content="Index mail" Click="OnIndexMail" IsEnabled="{Binding !IsIndexing}"
+                        Margin="0,0,6,6"></Button>
+                <Button Content="Cancel" Click="OnCancelIndexing" IsVisible="{Binding IsIndexing}"
+                        Margin="0,0,6,6"></Button>
                 <Button Content="Export report" Click="OnExportReport" Margin="0,0,6,6"></Button>
             </WrapPanel>
             <TextBlock Text="{Binding MailStatus}" FontSize="11" TextWrapping="Wrap"></TextBlock>

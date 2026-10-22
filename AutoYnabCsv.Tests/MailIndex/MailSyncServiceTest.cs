@@ -104,6 +104,42 @@ public class MailSyncServiceTest
     }
 
     [TestMethod]
+    public void ASyncThatIsStoppedKeepsWhatItReadAndSaysItStopped()
+    {
+        WithStore(
+            root =>
+            {
+                Write(root, "1.emlx");
+                Write(root, "2.emlx");
+                Write(root, "3.emlx");
+            },
+            (root, indexPath) =>
+            {
+                using var index = MailIndexStore.Open(indexPath);
+                using var stopping = new CancellationTokenSource();
+
+                var report = MailSyncService.Sync(
+                    index,
+                    root,
+                    RuleSetLoader.Shipped(),
+                    progress: progress =>
+                    {
+                        if (progress.Seen >= 1)
+                            stopping.Cancel();
+                    },
+                    cancellation: stopping.Token
+                );
+
+                Assert.IsTrue(report.Result.Cancelled);
+                Assert.AreEqual(1, report.Result.Indexed);
+                Assert.AreEqual(1, index.Count, "what was read is kept, the rest is left for next time");
+                StringAssert.Contains(report.Describe(), "Stopped early");
+                StringAssert.Contains(report.Describe(), "The next run carries on from here");
+            }
+        );
+    }
+
+    [TestMethod]
     public void WhatWasIndexedCanBeReadAgain()
     {
         WithStore(

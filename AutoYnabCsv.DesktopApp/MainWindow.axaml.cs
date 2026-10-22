@@ -69,6 +69,8 @@ public partial class MainWindow : Window, IViewFor<MainWindowViewModel>
         }
     }
 
+    private void OnCancelIndexing(object? sender, RoutedEventArgs e) => ViewModel?.CancelIndexing();
+
     private async void OnExportReport(object? sender, RoutedEventArgs e)
     {
         if (ViewModel is { } viewModel)
