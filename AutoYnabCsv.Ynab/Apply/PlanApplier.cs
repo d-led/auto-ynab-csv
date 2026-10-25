@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using AutoYnabCsv.Contracts;
 using AutoYnabCsv.Ynab.Contracts;
 
 namespace AutoYnabCsv.Ynab.Apply;
@@ -94,19 +96,21 @@ public static class PlanApplier
             }
         }
 
+        var present = await PresentAsync(plan, gateway, cancellationToken);
+
         foreach (var create in plan.Creates)
         {
             try
             {
-                var id = await WriteAsync(plan.PlanId, create, gateway, cancellationToken);
-
-                if (id is null)
+                if (present.Contains(KeyOf(create)))
                 {
-                    // The import id is already in the plan and the row with it: this row was
-                    // applied before, which is the point of a deterministic import id.
+                    // Reading before writing, because a create that succeeds is never refused, and a
+                    // second apply would then write the row again under the id it was given last time.
                     alreadyThere++;
                     continue;
                 }
+
+                var id = await WriteAsync(plan.PlanId, create, gateway, cancellationToken);
 
                 created++;
                 Journal.Append(
@@ -155,51 +159,87 @@ public static class PlanApplier
     }
 
     /// <summary>
+    /// What is already in the plan, for the months the plan touches: one read per month rather than one
+    /// per row, and the only reliable question to ask — an import id says what a row was written under,
+    /// not whether the row is there.
+    /// </summary>
+    private static async Task<HashSet<string>> PresentAsync(
+        RepairPlan plan,
+        IYnabGateway gateway,
+        CancellationToken cancellationToken
+    )
+    {
+        var present = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var month in plan.Creates.Select(create => new DateOnly(create.Date.Year, create.Date.Month, 1)).Distinct())
+        {
+            var transactions = await gateway.TransactionsAsync(
+                plan.PlanId,
+                month,
+                month.AddMonths(1).AddDays(-1),
+                cancellationToken
+            );
+
+            foreach (var transaction in transactions)
+            {
+                present.Add(KeyOf(transaction.AccountId, transaction.Date, transaction.Amount));
+            }
+        }
+
+        return present;
+    }
+
+    private static string KeyOf(PlannedCreate create) => KeyOf(create.AccountId, create.Date, create.Amount);
+
+    /// <summary>
+    /// What the bank says happened: where, when and how much. Not the payee — YNAB writes its own name
+    /// for a transfer, and a row of ours is written without the prefix this tool puts in front of one.
+    /// </summary>
+    private static string KeyOf(string accountId, DateOnly date, Money amount) =>
+        $"{accountId}|{date:yyyy-MM-dd}|{amount.Amount:0.00}";
+
+    /// <summary>
     /// Writes one row and answers with its id, or with null when the plan already has it. YNAB keeps
     /// the import id of a transaction after the transaction itself is gone, so a row this tool created
     /// and a later repair removed can never be written under that id again — a repair would then
     /// propose the same create on every pass and never converge. Such an id is taken again with a
     /// suffix; an id whose row is still there is left alone.
     /// </summary>
-    private static async Task<string?> WriteAsync(
+    private static async Task<string> WriteAsync(
         string planId,
         PlannedCreate create,
         IYnabGateway gateway,
         CancellationToken cancellationToken
     )
     {
+        // The API refuses a payee that starts with one of its own internal names, and it says so only
+        // after the row is sent. A row that is not a transfer therefore names the far side plainly.
+        var sent = create.TransferAccountId is null
+            ? create with { PayeeName = TransferNaming.WithoutPrefix(create.PayeeName) }
+            : create;
+
         try
         {
-            return await gateway.CreateAsync(planId, create, cancellationToken);
+            return await gateway.CreateAsync(planId, sent, cancellationToken);
         }
         catch (YnabApiException exception) when (exception.Status == System.Net.HttpStatusCode.Conflict)
         {
-            if (await IsInThePlanAsync(planId, create, gateway, cancellationToken))
-            {
-                return null;
-            }
-
-            return await gateway.CreateAsync(planId, create with { ImportId = TakenAgain(create.ImportId) }, cancellationToken);
+            return await gateway.CreateAsync(planId, sent with { ImportId = TakenAgain(sent.ImportId) }, cancellationToken);
         }
     }
 
-    /// <summary>The row is in the plan now, not merely its id on record.</summary>
-    private static async Task<bool> IsInThePlanAsync(
-        string planId,
-        PlannedCreate create,
-        IYnabGateway gateway,
-        CancellationToken cancellationToken
-    )
+    /// <summary>
+    /// An import id YNAB accepts (at most 36 characters) that no row of ours has held before. It has
+    /// to be different on every attempt: the id of a deleted row stays taken, and a second attempt
+    /// under the same derived id would be refused exactly like the first.
+    /// </summary>
+    private static string TakenAgain(string importId)
     {
-        var from = new DateOnly(create.Date.Year, create.Date.Month, 1);
-        var month = await gateway.TransactionsAsync(planId, from, from.AddMonths(1).AddDays(-1), cancellationToken);
+        var suffix = $"-{RandomNumberGenerator.GetHexString(6).ToLowerInvariant()}";
+        var room = 36 - suffix.Length;
 
-        return month.Any(transaction => string.Equals(transaction.ImportId, create.ImportId, StringComparison.Ordinal));
+        return (importId.Length <= room ? importId : importId[..room]) + suffix;
     }
-
-    /// <summary>An import id YNAB accepts (at most 36 characters) that no row of ours has held before.</summary>
-    private static string TakenAgain(string importId) =>
-        importId.Length <= 32 ? importId + "-r2" : importId[..32] + "-r2";
 
     /// <summary>
     /// Puts back what the journal says was taken, newest first: a deleted transaction is recreated

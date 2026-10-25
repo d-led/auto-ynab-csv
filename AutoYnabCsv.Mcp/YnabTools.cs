@@ -6,6 +6,7 @@ using AutoYnabCsv.Ynab.Categorize;
 using AutoYnabCsv.Ynab.Contracts;
 using AutoYnabCsv.Ynab.Reconcile;
 using AutoYnabCsv.Ynab.Report;
+using AutoYnabCsv.Ynab.Settings;
 using AutoYnabCsv.Ynab.Snapshot;
 using ModelContextProtocol.Server;
 
@@ -91,7 +92,9 @@ public static class YnabTools
     [Description(
         "Holds a snapshot against a folder of bank exports and answers with the report: does the plan "
             + "hold the balance each export declares, which rows are missing, which are extra, and when the "
-            + "two ledgers stopped agreeing. Offline; nothing is changed and no request is made."
+            + "two ledgers stopped agreeing. The account mapping, own account numbers and any balance the "
+            + "export does not print are read from ~/.config/auto-ynab-csv/accounts.txt unless given here. "
+            + "Offline; nothing is changed and no request is made."
     )]
     public static string Reconcile(
         string snapshotFolder,
@@ -101,15 +104,16 @@ public static class YnabTools
         string[]? expectedBalances = null
     )
     {
+        var config = YnabConfig.Load();
         var snapshot = SnapshotStore.Load(snapshotFolder);
         var statements = BankStatementReader.ReadFolder(exportsFolder);
 
         var reconciliation = Reconciler.Of(
             snapshot,
             statements,
-            Pairs(accounts),
-            Pairs(ownIbans),
-            Amounts(expectedBalances)
+            accounts is { Length: > 0 } ? Pairs(accounts) : config.Accounts,
+            ownIbans is { Length: > 0 } ? Pairs(ownIbans) : config.OwnIbans,
+            expectedBalances is { Length: > 0 } ? Amounts(expectedBalances) : Amounts(config.ExpectedBalances)
         );
 
         return ReconcileReport.Markdown(reconciliation, CategoryProposals.For(snapshot));
@@ -138,8 +142,10 @@ public static class YnabTools
             .Where(parts => parts.Length == 2 && parts[0].Length > 0)
             .ToDictionary(parts => parts[0], parts => parts[1], StringComparer.Ordinal);
 
-    private static Dictionary<string, Money> Amounts(string[]? pairs) =>
-        Pairs(pairs).ToDictionary(pair => pair.Key, pair => new Money(Amount(pair.Key, pair.Value)));
+    private static Dictionary<string, Money> Amounts(IReadOnlyDictionary<string, string> pairs) =>
+        pairs.ToDictionary(pair => pair.Key, pair => new Money(Amount(pair.Key, pair.Value)));
+
+    private static Dictionary<string, Money> Amounts(string[]? pairs) => Amounts(Pairs(pairs));
 
     private static decimal Amount(string label, string text) =>
         GermanAmount.TryParse(text, out var amount)

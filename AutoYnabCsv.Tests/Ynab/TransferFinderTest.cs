@@ -13,32 +13,32 @@ public class TransferFinderTest
     private const string Visa = "DE00000000000000000005";
 
     private static readonly OwnAccounts Own = OwnAccounts.Of(
-        [Statement("Girokonto · 9004", Giro), Statement("Girokonto · 3784", Together)]
+        [Statement("Girokonto · 0001", Giro), Statement("Girokonto · 0003", Together)]
     );
 
     private static readonly OwnAccounts OwnWithVisa = OwnAccounts.Of(
-        [Statement("Girokonto · 9004", Giro), Statement("Visa Kreditkarte 9158", Visa)]
+        [Statement("Girokonto · 0001", Giro), Statement("Visa Kreditkarte 0005", Visa)]
     );
 
     [TestMethod]
     public void ARowTheBankHasInAnotherAccountIsOfferedAsAMove()
     {
         var moves = TransferFinder.Reaccountings(
-            [new RowOf("Girokonto · 3784", Row(0, "2026-01-14", -300m, Giro))],
-            [("Girokonto · 9004", Sample.T("t1", "2026-01-14", -300m, "Dmitry"))]
+            [new RowOf("Girokonto · 0003", Row(0, "2026-01-14", -300m, Giro))],
+            [("Girokonto · 0001", Sample.T("t1", "2026-01-14", -300m, "Some Person"))]
         );
 
         Assert.AreEqual(1, moves.Count);
-        Assert.AreEqual("Girokonto · 9004", moves[0].FromLabel);
-        Assert.AreEqual("Girokonto · 3784", moves[0].ToLabel);
+        Assert.AreEqual("Girokonto · 0001", moves[0].FromLabel);
+        Assert.AreEqual("Girokonto · 0003", moves[0].ToLabel);
     }
 
     [TestMethod]
     public void ARowThePlanAlreadyHasInThatAccountIsNotMoved()
     {
         var moves = TransferFinder.Reaccountings(
-            [new RowOf("Girokonto · 9004", Row(0, "2026-01-14", -300m, Giro))],
-            [("Girokonto · 9004", Sample.T("t1", "2026-01-14", -300m, "Dmitry"))]
+            [new RowOf("Girokonto · 0001", Row(0, "2026-01-14", -300m, Giro))],
+            [("Girokonto · 0001", Sample.T("t1", "2026-01-14", -300m, "Some Person"))]
         );
 
         Assert.AreEqual(0, moves.Count, "it is already where the bank has it");
@@ -48,10 +48,10 @@ public class TransferFinderTest
     public void TheNearestDayIsTheOneThatExplainsTheMove()
     {
         var moves = TransferFinder.Reaccountings(
-            [new RowOf("Girokonto · 3784", Row(0, "2026-01-14", -300m, Giro))],
+            [new RowOf("Girokonto · 0003", Row(0, "2026-01-14", -300m, Giro))],
             [
-                ("Girokonto · 9004", Sample.T("far", "2026-01-18", -300m, "Dmitry")),
-                ("Girokonto · 9004", Sample.T("near", "2026-01-14", -300m, "Dmitry")),
+                ("Girokonto · 0001", Sample.T("far", "2026-01-18", -300m, "Some Person")),
+                ("Girokonto · 0001", Sample.T("near", "2026-01-14", -300m, "Some Person")),
             ]
         );
 
@@ -63,10 +63,10 @@ public class TransferFinderTest
     {
         var moves = TransferFinder.Reaccountings(
             [
-                new RowOf("Girokonto · 3784", Row(0, "2026-01-14", -300m, Giro)),
-                new RowOf("Girokonto · 3784", Row(1, "2026-01-15", -300m, Giro)),
+                new RowOf("Girokonto · 0003", Row(0, "2026-01-14", -300m, Giro)),
+                new RowOf("Girokonto · 0003", Row(1, "2026-01-15", -300m, Giro)),
             ],
-            [("Girokonto · 9004", Sample.T("t1", "2026-01-14", -300m, "Dmitry"))]
+            [("Girokonto · 0001", Sample.T("t1", "2026-01-14", -300m, "Some Person"))]
         );
 
         Assert.AreEqual(1, moves.Count);
@@ -77,15 +77,15 @@ public class TransferFinderTest
     {
         var transfers = TransferFinder.Pair(
             [
-                new RowOf("Girokonto · 9004", Row(0, "2026-01-14", -300m, Together)),
-                new RowOf("Girokonto · 3784", Row(0, "2026-01-14", 300m, Giro)),
+                new RowOf("Girokonto · 0001", Row(0, "2026-01-14", -300m, Together)),
+                new RowOf("Girokonto · 0003", Row(0, "2026-01-14", 300m, Giro)),
             ],
             Own
         );
 
         Assert.AreEqual(1, transfers.Count);
         Assert.IsTrue(transfers[0].ConfirmedByAccountNumber, "both exports name the other side");
-        Assert.AreEqual("Girokonto · 3784", transfers[0].ToLabel);
+        Assert.AreEqual("Girokonto · 0003", transfers[0].ToLabel);
     }
 
     [TestMethod]
@@ -93,9 +93,9 @@ public class TransferFinderTest
     {
         var transfers = TransferFinder.Pair(
             [
-                new RowOf("Girokonto · 9004", Row(0, "2026-01-14", -300m, Together)),
-                new RowOf("Girokonto · 9004", Row(1, "2026-01-20", -300m, Together)),
-                new RowOf("Girokonto · 3784", Row(0, "2026-01-14", 300m, Giro)),
+                new RowOf("Girokonto · 0001", Row(0, "2026-01-14", -300m, Together)),
+                new RowOf("Girokonto · 0001", Row(1, "2026-01-20", -300m, Together)),
+                new RowOf("Girokonto · 0003", Row(0, "2026-01-14", 300m, Giro)),
             ],
             Own
         );
@@ -108,7 +108,7 @@ public class TransferFinderTest
     public void APaymentToSomebodyElseHasNoSecondHalf()
     {
         var transfers = TransferFinder.Pair(
-            [new RowOf("Girokonto · 9004", Row(0, "2026-01-14", -300m, "DE99999999999999999999"))],
+            [new RowOf("Girokonto · 0001", Row(0, "2026-01-14", -300m, "DE99999999999999999999"))],
             Own
         );
 
@@ -120,8 +120,8 @@ public class TransferFinderTest
     {
         var transfers = TransferFinder.Pair(
             [
-                new RowOf("Girokonto · 9004", Row(0, "2026-07-01", -0.54m, "0000000000")),
-                new RowOf("Girokonto · 3784", Row(0, "2026-07-01", 0.54m, "1209823267")),
+                new RowOf("Girokonto · 0001", Row(0, "2026-07-01", -0.54m, "0000000000")),
+                new RowOf("Girokonto · 0003", Row(0, "2026-07-01", 0.54m, "1209820004")),
             ],
             Own
         );
@@ -134,8 +134,8 @@ public class TransferFinderTest
     {
         var transfers = TransferFinder.Pair(
             [
-                new RowOf("Girokonto · 9004", Row(0, "2026-01-14", -400m, "DE99999999999999999999")),
-                new RowOf("Visa Kreditkarte 9158", Row(0, "2026-01-14", 400m, string.Empty)),
+                new RowOf("Girokonto · 0001", Row(0, "2026-01-14", -400m, "DE99999999999999999999")),
+                new RowOf("Visa Kreditkarte 0005", Row(0, "2026-01-14", 400m, string.Empty)),
             ],
             Own
         );
@@ -148,8 +148,8 @@ public class TransferFinderTest
     {
         var transfers = TransferFinder.Pair(
             [
-                new RowOf("Visa Kreditkarte 9158", Row(0, "2026-01-14", 400m, string.Empty)),
-                new RowOf("Girokonto · 9004", Row(0, "2026-01-14", -400m, Spaced(Visa))),
+                new RowOf("Visa Kreditkarte 0005", Row(0, "2026-01-14", 400m, string.Empty)),
+                new RowOf("Girokonto · 0001", Row(0, "2026-01-14", -400m, Spaced(Visa))),
             ],
             OwnWithVisa
         );
@@ -161,21 +161,21 @@ public class TransferFinderTest
     [TestMethod]
     public void AMaskedCardNumberIsNotOneOfYourAccounts()
     {
-        Assert.IsNull(Own.LabelOf("4748 •••• •••• 9158"));
-        Assert.IsNull(Own.LabelOf("1052774781"), "a short internal number is not an account anybody transfers to");
+        Assert.IsNull(Own.LabelOf("4748 •••• •••• 0005"));
+        Assert.IsNull(Own.LabelOf("1052770002"), "a short internal number is not an account anybody transfers to");
     }
 
     [TestMethod]
     public void AnAccountNumberWrittenWithSpacesIsStillRecognised()
     {
-        Assert.AreEqual("Girokonto · 9004", Own.LabelOf(Spaced(Giro)));
+        Assert.AreEqual("Girokonto · 0001", Own.LabelOf(Spaced(Giro)));
     }
 
     [TestMethod]
     public void AnAccountNumberTheExportNeverPrintsCanBeGivenByHand()
     {
         var own = OwnAccounts.Of(
-            [Statement("Girokonto · 9004", Giro)],
+            [Statement("Girokonto · 0001", Giro)],
             new Dictionary<string, string> { [Spaced(N26)] = "n26" }
         );
 
@@ -187,14 +187,14 @@ public class TransferFinderTest
     {
         var statement = new BankStatement(
             "export.csv",
-            "Girokonto · 9004",
-            Statement("Girokonto · 9004", Giro).Statement,
+            "Girokonto · 0001",
+            Statement("Girokonto · 0001", Giro).Statement,
             [Row(0, "2026-01-14", -300m, Together), Row(1, "2026-01-15", -6.82m, "DE99999999999999999999")]
         );
 
         var targets = TransferFinder.TargetsOf(statement, Own);
 
-        Assert.AreEqual("Girokonto · 3784", targets[0]);
+        Assert.AreEqual("Girokonto · 0003", targets[0]);
         Assert.IsFalse(targets.ContainsKey(1), "a supermarket is not one of your accounts");
     }
 

@@ -48,7 +48,7 @@ public class ReconcileReportTest
     {
         var statement = new BankStatement(
             SourceFile: "export.csv",
-            Label: "Girokonto · 9004",
+            Label: "Girokonto · 0001",
             Statement: new ExportStatement("Girokonto", "DE00000000000000000001", null, null, new DateOnly(2026, 10, 25), exportBalance),
             Rows: []
         );

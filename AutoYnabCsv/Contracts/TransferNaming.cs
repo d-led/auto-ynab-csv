@@ -22,6 +22,13 @@ public static class TransferNaming
     private static string Hint(string counterpartyIban) =>
         $"…{new string([.. Digits(counterpartyIban).TakeLast(4)])}";
 
+    /// <summary>
+    /// The same payee for a row that is not a transfer. The API refuses a payee starting with one of its
+    /// own internal names, so the account the money came from is named without the prefix.
+    /// </summary>
+    public static string WithoutPrefix(string payee) =>
+        payee.StartsWith(Prefix, StringComparison.Ordinal) ? payee[Prefix.Length..] : payee;
+
     private static string Digits(string iban) =>
         new([.. iban.Where(char.IsAsciiLetterOrDigit).Select(char.ToUpperInvariant)]);
 }

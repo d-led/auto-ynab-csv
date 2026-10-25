@@ -21,18 +21,18 @@ public class ExpectedBalanceTest
     [TestMethod]
     public void ABalanceToldByHandStandsInForOneTheExportDoesNotPrint()
     {
-        var reconciled = Reconcile(expectedBalance: -38.59m);
+        var reconciled = Reconcile(expectedBalance: -25.00m);
 
-        Assert.AreEqual(-38.59m, reconciled.ExportBalance, "the app says minus 38,59");
+        Assert.AreEqual(-25.00m, reconciled.ExportBalance, "the app says minus 25,00");
         Assert.IsFalse(reconciled.BalanceFromExport, "and the report says where it came from");
     }
 
     [TestMethod]
     public void TheDifferenceIsAgainstTheBalanceToldByHandNotAgainstNothing()
     {
-        var reconciled = Reconcile(expectedBalance: -38.59m);
+        var reconciled = Reconcile(expectedBalance: -25.00m);
 
-        Assert.AreEqual(4378.48m, reconciled.Difference, "the plan thinks it holds 4 339,89 more than the bank does");
+        Assert.AreEqual(4364.89m, reconciled.Difference, "the plan thinks it holds 4 339,89 more than the bank does");
         Assert.IsFalse(reconciled.Balances);
     }
 

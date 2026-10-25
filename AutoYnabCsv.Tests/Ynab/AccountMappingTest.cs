@@ -13,9 +13,9 @@ public class AccountMappingTest
     public void AnAccountChosenByHandIsTheOneUsed()
     {
         var mapping = Resolve(
-            Statement("Girokonto · 9004", closing: 100m),
+            Statement("Girokonto · 0001", closing: 100m),
             [Account("acc-1", "Something Else", balance: 0m)],
-            new Dictionary<string, string> { ["Girokonto · 9004"] = "acc-1" }
+            new Dictionary<string, string> { ["Girokonto · 0001"] = "acc-1" }
         );
 
         Assert.AreEqual("acc-1", mapping.Assignments.Single().Account.Id);
@@ -25,7 +25,7 @@ public class AccountMappingTest
     [TestMethod]
     public void AnAccountNamedAfterTheExportIsFoundWithoutBeingTold()
     {
-        var mapping = Resolve(Statement("Girokonto · 9004", closing: null), [Account("acc-1", "Girokonto · 9004", 0m)], NoOverrides);
+        var mapping = Resolve(Statement("Girokonto · 0001", closing: null), [Account("acc-1", "Girokonto · 0001", 0m)], NoOverrides);
 
         Assert.AreEqual("acc-1", mapping.Assignments.Single().Account.Id);
     }
@@ -34,8 +34,8 @@ public class AccountMappingTest
     public void TwoAccountsThatShareTheNameDecideNothing()
     {
         var mapping = Resolve(
-            Statement("Girokonto · 9004", closing: null),
-            [Account("acc-1", "Girokonto · 9004 a", 10m), Account("acc-2", "Girokonto · 9004 b", 20m)],
+            Statement("Girokonto · 0001", closing: null),
+            [Account("acc-1", "Girokonto · 0001 a", 10m), Account("acc-2", "Girokonto · 0001 b", 20m)],
             NoOverrides
         );
 
@@ -46,18 +46,18 @@ public class AccountMappingTest
     [TestMethod]
     public void AnAccountNumberTheExportPrintsFindsTheAccountItEndsWith()
     {
-        var mapping = Resolve(Statement("Umsatzliste", closing: null, iban: "DE00000000000000009004"), [Account("acc-1", "DKB 9004", 0m)], NoOverrides);
+        var mapping = Resolve(Statement("Umsatzliste", closing: null, iban: "DE00000000000000000001"), [Account("acc-1", "DKB 0001", 0m)], NoOverrides);
 
         Assert.AreEqual("acc-1", mapping.Assignments.Single().Account.Id);
-        StringAssert.Contains(mapping.Assignments.Single().Evidence, "9004");
+        StringAssert.Contains(mapping.Assignments.Single().Evidence, "0001");
     }
 
     [TestMethod]
     public void AnAccountHoldingTheOnlyMatchingBalanceIsTheOne()
     {
         var mapping = Resolve(
-            Statement("Umsatzliste", closing: 47.89m, iban: ""),
-            [Account("acc-1", "Wallet", 0m), Account("acc-2", "Second", 47.89m)],
+            Statement("Umsatzliste", closing: 42.00m, iban: ""),
+            [Account("acc-1", "Wallet", 0m), Account("acc-2", "Second", 42.00m)],
             NoOverrides
         );
 

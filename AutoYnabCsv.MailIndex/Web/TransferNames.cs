@@ -7,7 +7,7 @@ namespace AutoYnabCsv.MailIndex.Web;
 /// <summary>
 /// What a detected transfer is called on each of the two rows it joins. Money leaves one exported
 /// account and arrives in another, so a row carries the payee of the other side of the crossing —
-/// <c>Transfer : Girokonto · 9004</c> — which is the payee YNAB itself gives a transfer, so the
+/// <c>Transfer : Girokonto · 0001</c> — which is the payee YNAB itself gives a transfer, so the
 /// import lands as a transfer instead of a payment to a person.
 /// </summary>
 public static class TransferNames

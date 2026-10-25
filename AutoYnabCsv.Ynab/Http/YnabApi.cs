@@ -18,7 +18,8 @@ public sealed class YnabApi : IYnabGateway
 
     /// <summary>
     /// A wait this short is cheaper than a failed command; an hour of sitting still is not, and is
-    /// refused with the time instead.
+    /// refused with the time instead. A command that sends one request can afford to sit longer, so it
+    /// says so rather than changing the pace for everybody.
     /// </summary>
     private static readonly TimeSpan WaitWorthTaking = TimeSpan.FromSeconds(60);
 
@@ -31,12 +32,24 @@ public sealed class YnabApi : IYnabGateway
     private readonly HttpClient _http;
     private readonly RequestBudget _budget;
     private readonly Action<string>? _say;
+    private readonly TimeSpan _waitWorthTaking;
 
-    public YnabApi(HttpClient http, string accessToken, RequestBudget? budget = null, Action<string>? say = null)
+    /// <param name="waitWorthTaking">
+    /// How long this run will sit still rather than fail. A command that sends one request can afford
+    /// minutes; a repair that sends fifty should not, because its total wait would be hours.
+    /// </param>
+    public YnabApi(
+        HttpClient http,
+        string accessToken,
+        RequestBudget? budget = null,
+        Action<string>? say = null,
+        TimeSpan? waitWorthTaking = null
+    )
     {
         _http = http;
         _budget = budget ?? new RequestBudget();
         _say = say;
+        _waitWorthTaking = waitWorthTaking ?? WaitWorthTaking;
         _http.BaseAddress ??= new Uri(BaseUrl);
         _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
     }
@@ -227,7 +240,7 @@ public sealed class YnabApi : IYnabGateway
     {
         // Not a loop: the hour is counted here, so a refusal is the end of the hour, not a moment.
         await _budget.AcquireAsync(
-            WaitWorthTaking,
+            _waitWorthTaking,
             delay => _say?.Invoke($"the hour's {RequestBudget.PerHour} requests are nearly spent; waiting {delay.TotalSeconds:0}s"),
             cancellationToken
         );

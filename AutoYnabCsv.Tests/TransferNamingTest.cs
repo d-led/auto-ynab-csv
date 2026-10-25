@@ -13,16 +13,16 @@ public class TransferNamingTest
     [TestMethod]
     public void AMovementToMyOwnAccountIsNamedAsTheTransferItIs()
     {
-        var entries = Convert(Book("Tagesgeld · 3267"));
+        var entries = Convert(Book("Tagesgeld · 0004"));
 
-        Assert.AreEqual("Transfer : Tagesgeld · 3267", entries[0].Payee);
+        Assert.AreEqual("Transfer : Tagesgeld · 0004", entries[0].Payee);
         Assert.AreEqual("Sparrate · …0003", entries[0].Memo, "the number the export printed stays readable");
     }
 
     [TestMethod]
     public void APaymentToSomebodyElseKeepsThePayeeTheExportGaveIt()
     {
-        var entries = Convert(Book("Tagesgeld · 3267"));
+        var entries = Convert(Book("Tagesgeld · 0004"));
 
         Assert.AreEqual("Some Shop", entries[1].Payee);
         Assert.AreEqual("Einkauf", entries[1].Memo);
@@ -39,9 +39,9 @@ public class TransferNamingTest
     [TestMethod]
     public void AnAccountNumberWrittenInGroupsIsTheSameAccount()
     {
-        var book = new OwnAccountBook([("DE00 0000 0000 0000 0000 03", "Tagesgeld · 3267")]);
+        var book = new OwnAccountBook([("DE00 0000 0000 0000 0000 03", "Tagesgeld · 0004")]);
 
-        Assert.AreEqual("Tagesgeld · 3267", book.NameOf(OwnNumber));
+        Assert.AreEqual("Tagesgeld · 0004", book.NameOf(OwnNumber));
         Assert.IsNull(book.NameOf("DE99999999999999999999"), "somebody else's number is not an own account");
         Assert.IsNull(book.NameOf("0003"), "four digits alone are too little to be sure");
     }
@@ -49,7 +49,7 @@ public class TransferNamingTest
     [TestMethod]
     public void AnEmptyMemoBecomesJustTheHint()
     {
-        Assert.AreEqual("…0003", TransferNaming.Memo(string.Empty, OwnNumber, Book("Tagesgeld · 3267")));
+        Assert.AreEqual("…0003", TransferNaming.Memo(string.Empty, OwnNumber, Book("Tagesgeld · 0004")));
     }
 
     [TestMethod]

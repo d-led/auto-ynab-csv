@@ -17,16 +17,24 @@ Two things, once.
 export YNAB_TOKEN=...     # YNAB → Account Settings → Developer Settings
 ```
 
-Then run *The check* once **without** any `--account` lines. It will name the exports it could not place;
-those names are the labels you map. Nothing is changed by this run.
+Then run *The check* once **without** any mapping. It will name the exports it could not place; those
+names are the labels you map.
 
 ```bash
-dotnet run --project AutoYnabCsv.ConsoleApp -- ynab reconcile \
-  --snapshot artifacts/ynab/today --input ~/Downloads/exports
+./scripts/check.sh ~/Downloads/exports
 ```
 
-Look for lines saying `Unresolved export: <label>`. Add one `--account "<label>=<id>"` per label, and
-keep them in your shell history — they do not change unless you rename an account.
+Every line the run says `Unresolved export: <label>` is a line to add to
+`~/.config/auto-ynab-csv/accounts.txt`, typed once and never again:
+
+```ini
+plan=<the plan id — `dotnet run --project AutoYnabCsv.ConsoleApp -- ynab plans`>
+account=<label>=<account id>
+```
+
+You do not need to be told the ids either: `ynab accounts --snapshot artifacts/ynab/<newest>` prints
+them next to the names. That one command is also in the editor, as the `ynab_accounts` tool — see
+*Using the answers from an editor* in the [README](../README.md).
 
 ## Where am I?
 
@@ -56,6 +64,15 @@ matters yet.
 
 **You are safe to walk away here.** This step only reads.
 
+*Cheaper check while you iterate:* `ynab balances` asks YNAB for the balance of every account — **one
+request** — and you compare it with the closing balance each export prints. A snapshot costs one
+request per month of history, so use this between repairs and keep the snapshot for when you want the
+row-level detail.
+
+*Free re-plan:* if you pass an existing folder to the script, `./scripts/check.sh ~/Downloads/exports
+artifacts/ynab/today` reuses the snapshot already in it and spends nothing. Changing a rule and
+re-planning costs no requests.
+
 ## The fix — changes your plan
 
 Do this only when the difference column is not `0.00`.
@@ -66,7 +83,18 @@ dotnet run --project AutoYnabCsv.ConsoleApp -- ynab apply \
   --journal artifacts/ynab/journal.jsonl --apply
 ```
 
-It prints one line: `created N, deleted N, categorized N, moved N`. That is your receipt.
+Two kinds of change come out of one plan, and they travel by different roads:
+
+- **rows to add** are written as CSV files into `import/` beside the plan — one per account. Import
+  them in YNAB (Account → Import) the way you always do. Importing is free; an API request is not.
+- **rows to remove, move or categorise** go over the API, because a CSV cannot express them.
+
+It prints one line: `created N, deleted N, categorized N, moved N`. That is your receipt, and
+`N file(s) in …/import hold the M row(s) to add` tells you what is left to drag in.
+
+`--create` adds the rows over the API too. Reach for it only when a removal and an addition belong
+together: deleting one leg of a transfer also deletes the other, so the row that has to come back
+cannot wait for a manual import.
 
 **Then go back to *The check* with a new folder name.** Never apply twice without checking in between —
 the second apply is working from a picture of the plan that no longer exists.
@@ -77,7 +105,7 @@ One column. `difference`.
 
 ```
 account              export says     plan says   difference   missing   extra
-Giro Emergency           47.89         297.89      +250.00         1       0
+Emergency           42.00         292.00      +250.00         1       0
 ```
 
 - **export says** — the number the bank printed. This is the truth.

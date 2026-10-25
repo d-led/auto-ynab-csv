@@ -160,7 +160,7 @@ exactly as the bank wrote it.
 
    Money moving between two of your own exported accounts is named after the account on the
    other side of the crossing, and not after whoever the bank printed: the arrival reads
-   `Transfer : Girokonto · 9004`, the departure `Transfer : n26` — the payee YNAB itself gives a
+   `Transfer : Girokonto · 0001`, the departure `Transfer : n26` — the payee YNAB itself gives a
    transfer, so the import lands as a transfer instead of a payment to a person. The account
    name is the file's own, so it matches your YNAB account if you named the account the same way.
    The report names the same pair the same way in its `facts:` line. A card settlement is paired
@@ -332,7 +332,7 @@ goes.) The `since_date` is always sent explicitly, because the API otherwise def
 year and would silently hide the very months worth checking.
 
 `reconcile` pairs each export with the account it belongs to — by name, by the IBAN's last four
-digits, or by being the only account holding that balance; `--account "Girokonto · 9004=<id>"`
+digits, or by being the only account holding that balance; `--account "Girokonto · 0001=<id>"`
 decides a case by hand — then answers four questions per account:
 
 - does the plan hold the balance the export declares for its last day,
@@ -345,9 +345,10 @@ decides a case by hand — then answers four questions per account:
 
 ```shell
 auto-ynab-csv ynab accounts  --snapshot artifacts/ynab     # names, types, balances, ids
+auto-ynab-csv ynab balances                                # the plan's balance per account; ONE request
 auto-ynab-csv ynab reconcile --snapshot artifacts/ynab --input ~/Downloads/ynab-25-oct
 auto-ynab-csv ynab apply     --plan artifacts/ynab/plan.json            # dry run: prints the plan
-auto-ynab-csv ynab apply     --plan artifacts/ynab/plan.json --apply    # does it, and journals it
+auto-ynab-csv ynab apply     --plan artifacts/ynab/plan.json --apply    # removes, moves, categorises
 auto-ynab-csv ynab undo      --journal artifacts/ynab/journal.jsonl --plan-id <id> --apply
 ```
 
@@ -357,6 +358,31 @@ added, the corrections holding a gap shut are removed, and the categories the pl
 argues for are set. Nothing changes until `apply` is given `--apply`; every created transaction is
 `approved: false`, so it is visible in YNAB before it counts; and every action is written to a
 journal first, so `undo` can put back what `apply` took.
+
+### Rows to add cost nothing; the API is for what a file cannot do
+
+Importing a CSV is free and an API request is not, so **rows are added by import by default**:
+`apply` writes one file per account into `import/` beside the plan (`--csv DIR` puts them elsewhere),
+and you drag them into YNAB the way you always have. The API is then only spent on the three things a
+file cannot express — **removing** a wrong row, **moving** one to the account it belongs in, and
+**categorising** — which for a repair is the small half of the work.
+
+```shell
+auto-ynab-csv ynab apply --plan artifacts/ynab/plan.json --apply            # deletes/moves/categories
+auto-ynab-csv ynab apply --plan artifacts/ynab/plan.json --apply --create   # also add rows over the API
+```
+
+`--create` exists for the one case where the two must happen together: deleting one leg of a transfer
+takes the other leg with it, and the row written back afterwards cannot wait for a manual import. Use
+it when the plan's additions are repairs to its own removals; import the rest.
+
+Two more ways the allowance is respected:
+
+- `ynab balances` answers "does the plan hold what the bank says" with **one** request, by comparing
+  against the closing balance each export prints. A snapshot costs one request per month of history,
+  so this is the check to run between repairs.
+- `./scripts/check.sh <exports> <snapshot-folder>` reuses a snapshot that is already there and spends
+  **nothing**, so changing a rule and re-planning is free.
 
 Two things keep a repair from being an accident:
 
@@ -463,22 +489,85 @@ plan would change, what an apply did, how far the plan has drifted from the bank
 files that are already on disk, so answering them costs no API request — which is why they are served
 over MCP rather than as more commands.
 
-```shell
-dotnet build AutoYnabCsv.Mcp        # once; the server runs from the built assembly
+### What you need first
+
+1. **The .NET 10 SDK.** Same as the rest of this project: `dotnet --version` should print 10 or later.
+2. **The server, built.** The editor starts a *built* assembly, so build it once and again after
+   changing the code:
+
+   ```shell
+   dotnet build AutoYnabCsv.Mcp
+   ```
+
+   It lands in `AutoYnabCsv.Mcp/bin/Debug/net10.0/AutoYnabCsv.Mcp.dll`. If that file is missing the
+   server shows as failed in the editor with "no such file" — build it.
+3. **Something to read.** Every tool reports on files the console app produced earlier, so run
+   `ynab snapshot` (and `ynab reconcile`, `ynab plan`, `ynab apply`) at least once. The default
+   locations are `artifacts/ynab/<stamp>/` and `artifacts/ynab/journal-*.jsonl`; both are git-ignored
+   and never committed.
+4. **Your account mapping, one file, outside the repository.** The same file `scripts/check.sh` reads:
+
+   ```shell
+   mkdir -p ~/.config/auto-ynab-csv
+   $EDITOR ~/.config/auto-ynab-csv/accounts.txt
+   ```
+
+   ```ini
+   plan=00000000-0000-0000-0000-000000000000
+   account=Girokonto · 0002=00000000-0000-0000-0000-000000000001
+   account=Girokonto · 0003=00000000-0000-0000-0000-000000000002
+   own-iban=n26=DE00 0000 0000 0000 0000 00
+   expect-balance=n26=-25,00
+   ```
+
+   Keep it there rather than in the repository: it holds identifiers you probably do not want to
+   publish. A missing file is not an error — it only means the tools cannot pair an export with an
+   account on their own.
+
+### Registering it
+
+The workspace already carries `.vscode/mcp.json`, so in VS Code:
+
+1. Open the Explorer or run **MCP: List Servers** from the command palette (`F1`).
+2. `auto-ynab-csv` is listed; choose **Start** (or open the file and press the ▶ above it).
+3. The editor asks you to trust the server the first time — it runs local code, so say yes.
+
+To use it in another editor or in your own client, the registration is plain stdio:
+
+```json
+{
+  "servers": {
+    "auto-ynab-csv": {
+      "type": "stdio",
+      "command": "dotnet",
+      "args": ["${workspaceFolder}/AutoYnabCsv.Mcp/bin/Debug/net10.0/AutoYnabCsv.Mcp.dll"]
+    }
+  }
+}
 ```
 
-`.vscode/mcp.json` registers it. The tools:
+Run the assembly with `dotnet <dll>`, not `dotnet run`: `run` prints build output on the same channel
+the protocol uses, and the client sees that as garbage.
 
-| tool | answers |
-| --- | --- |
-| `ynab_accounts` | the accounts of a snapshot and the balance each holds |
-| `ynab_exports` | what a folder of exports contains: account, period, declared balance, rows |
-| `ynab_reconcile` | the full report: balances, missing and extra rows, where the ledgers diverge |
-| `ynab_plan` | a repair plan as tables instead of JSON — add, move, remove |
-| `ynab_journal` | what an apply did, counted and listed |
+### The tools
 
-Nothing here writes, and nothing here calls the API. Reading the plan and writing changes stay in the
-console app, where the request allowance and the `--apply` gate already live.
+| tool | arguments | answers |
+| --- | --- | --- |
+| `ynab_accounts` | `snapshotFolder` | the accounts of a snapshot and the balance each holds |
+| `ynab_exports` | `exportsFolder` | what a folder of exports contains: account, period, declared balance, rows |
+| `ynab_reconcile` | `snapshotFolder`, `exportsFolder`, optional `accounts` / `ownIbans` / `expectedBalances` | the full report: balances, missing and extra rows, where the ledgers diverge |
+| `ynab_plan` | `planPath`, optional `largest` | a repair plan as tables instead of JSON — add, move, remove |
+| `ynab_journal` | `journalPath`, optional `newest` | what an apply did, counted and listed |
+
+`ynab_reconcile` takes only the two folders when your settings file is in place; the three optional
+arguments (`["Girokonto · 0002=<id>", …]`) override what the file says for one call.
+
+### What it will not do
+
+Nothing here writes, and nothing here calls the API: no tool creates, moves or deletes a transaction,
+and none of them spends a request from the hourly allowance. Reading the plan and writing changes stay
+in the console app, where the allowance and the `--apply` gate already live. The server only reads
+files under the paths you hand it.
 
 ## Structure
 

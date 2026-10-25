@@ -18,9 +18,9 @@ public class AccountLabelTest
     public void ASuffixAfterTheIbanDoesNotConfuseTheLabel()
     {
         Assert.AreEqual(
-            "Girokonto u18 · 0002",
+            "Girokonto 0001 · 0002",
             AccountLabel.Of(
-                "19-10-2026_Umsatzliste_Girokonto u18_DE00000000000000000002-xiu-giro.csv"
+                "19-10-2026_Umsatzliste_Girokonto 0001_DE00000000000000000002-owner-giro.csv"
             )
         );
     }

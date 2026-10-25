@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using AutoYnabCsv.Contracts;
 using AutoYnabCsv.Ynab.Contracts;
 using AutoYnabCsv.Ynab.Reconcile;
 
@@ -99,11 +100,14 @@ public static class RepairPlanBuilder
     }
 
     /// <summary>
-    /// A transfer has two legs and YNAB removes both when one is deleted. When the leg being removed is
-    /// half of a movement whose other half the export does have, that other half goes too — so it is
-    /// written again, as an ordinary row, because the transfer it was half of is not going to exist any
-    /// more. Without this, deleting a wrong transfer takes the right row with it, and the next reconcile
-    /// asks for that row back: the same numbers, forever.
+    /// A transfer has two legs and YNAB removes both when one is deleted. When the other half is a row
+    /// the bank shows, that half goes too — so it is written again, as an ordinary row, because the
+    /// transfer it was half of is not going to exist any more. Without this, deleting a wrong transfer
+    /// takes the right row with it, and the next reconcile asks for that row back: the same numbers,
+    /// forever.
+    ///
+    /// A half the exports do not show either is not written again: writing it back would invent a
+    /// movement the bank never had, and the next reconcile would delete it. That is the loop.
     /// </summary>
     private static IReadOnlyList<PlannedCreate> Rescued(
         Reconciliation reconciliation,
@@ -111,6 +115,10 @@ public static class RepairPlanBuilder
     )
     {
         var victims = deletes.Select(delete => delete.Transaction.Id).ToHashSet(StringComparer.Ordinal);
+        var absentFromTheExports = reconciliation
+            .Accounts.SelectMany(account => account.OnlyInPlan)
+            .Select(transaction => transaction.Id)
+            .ToHashSet(StringComparer.Ordinal);
 
         return
         [
@@ -120,6 +128,7 @@ public static class RepairPlanBuilder
                 .Select(victim => PartnerOf(victim, reconciliation.Snapshot.Transactions))
                 .OfType<YnabTransaction>()
                 .Where(partner => !victims.Contains(partner.Id))
+                .Where(partner => !absentFromTheExports.Contains(partner.Id))
                 .Select(partner => CreateOf(partner, reconciliation.Snapshot.Accounts))
                 .DistinctBy(create => create.ImportId, StringComparer.Ordinal)
         ];
@@ -144,17 +153,23 @@ public static class RepairPlanBuilder
             AccountName: partner.AccountName,
             Date: partner.Date,
             Amount: partner.Amount,
-            PayeeName: partner.PayeeName ?? string.Empty,
+            PayeeName: TransferNaming.WithoutPrefix(partner.PayeeName ?? string.Empty),
             Memo: partner.Memo ?? string.Empty,
             ImportId: ImportIds.Of(
                 partner.AccountId,
                 partner.Date,
                 partner.Amount,
-                partner.PayeeName ?? string.Empty,
+                TransferNaming.WithoutPrefix(partner.PayeeName ?? string.Empty),
                 partner.Memo ?? string.Empty
             ),
             CategoryId: partner.CategoryId
         );
+
+    /// <summary>
+    /// A row that is not a transfer any more cannot be paid to a transfer: the API refuses a payee that
+    /// starts with an internal one, so the far side's name is used as it is.
+    /// </summary>
+    private static string Plain(string payee) => TransferNaming.WithoutPrefix(payee);
 
     /// <summary>
     /// A row the bank has in another account is moved there instead of being added here and removed
@@ -279,22 +294,10 @@ public static class RepairPlanBuilder
             .Where(delete => !reconciliation.Reaccountings.Any(move => move.Transaction.Id == delete.Transaction.Id))
             .ToList();
 
-        // YNAB deletes both legs of a transfer with one delete, so an incoming leg is dropped when
-        // its outgoing partner is being deleted too: the second call would find nothing.
-        var outgoing = unique
-            .Where(delete => delete.Transaction.IsTransfer && delete.Transaction.Amount.IsNegative)
-            .Select(delete => (delete.Transaction.Date, Amount: delete.Transaction.Amount.Abs()))
-            .ToHashSet();
-
-        return
-        [
-            .. unique
-                .Where(delete =>
-                    !delete.Transaction.IsTransfer
-                    || delete.Transaction.Amount.IsNegative
-                    || !outgoing.Contains((delete.Transaction.Date, delete.Transaction.Amount.Abs())))
-                .OrderBy(delete => delete.Transaction.Date)
-        ];
+        // YNAB removes both legs of a transfer with one delete, so the second call for a pair finds
+        // nothing; the applier treats that as done rather than as a failure. Every row is still asked
+        // for once, because a pair with a duplicated leg has more legs than one delete can take.
+        return [.. unique.OrderBy(delete => delete.Transaction.Date)];
     }
 
     private static IReadOnlyList<string> Notes(Reconciliation reconciliation)

@@ -7,6 +7,7 @@ using AutoYnabCsv.Ynab.Contracts;
 using AutoYnabCsv.Ynab.Http;
 using AutoYnabCsv.Ynab.Reconcile;
 using AutoYnabCsv.Ynab.Report;
+using AutoYnabCsv.Ynab.Settings;
 using AutoYnabCsv.Ynab.Snapshot;
 
 namespace AutoYnabCsv.App.Ynab;
@@ -48,6 +49,7 @@ public static class YnabCli
                 "plans" => await PlansAsync(options),
                 "snapshot" => await SnapshotAsync(options),
                 "accounts" => Accounts(options),
+                "balances" => await BalancesAsync(options),
                 "reconcile" => Reconcile(options),
                 "apply" => await ApplyAsync(options),
                 "undo" => await UndoAsync(options),
@@ -181,6 +183,46 @@ public static class YnabCli
         return 0;
     }
 
+    /// <summary>
+    /// The plan's balance per account, read with one request instead of a whole snapshot. It answers
+    /// "does the plan hold what the bank says" when the exports' closing balances are to hand, and it is
+    /// the check to run between repairs: a snapshot costs a request per month of history.
+    /// </summary>
+    private static async Task<int> BalancesAsync(YnabOptions options)
+    {
+        var planId = options.Or("plan", YnabConfig.Load().Plan ?? string.Empty);
+        if (planId.Length == 0)
+        {
+            Console.Error.WriteLine(
+                "No plan: add plan=<id> to ~/.config/auto-ynab-csv/accounts.txt, or pass --plan."
+            );
+            return 2;
+        }
+
+        using var http = new HttpClient();
+        // One request is the whole command: sitting a few minutes for it beats being told to come back.
+        var accounts = await Gateway(http, waitWorthTaking: TimeSpan.FromMinutes(5)).AccountsAsync(planId);
+        var width = accounts.Count == 0 ? 7 : accounts.Max(account => account.Name.Length);
+
+        Console.WriteLine(
+            $"{"account".PadRight(width)}  {"balance".PadLeft(12)}  {"cleared".PadLeft(12)}  {"uncleared".PadLeft(12)}"
+        );
+        foreach (var account in accounts.Where(account => !account.Closed).OrderBy(account => account.Name, StringComparer.Ordinal))
+        {
+            Console.WriteLine(
+                $"{account.Name.PadRight(width)}  {Amount(account.Balance).PadLeft(12)}  "
+                    + $"{Amount(account.Cleared).PadLeft(12)}  {Amount(account.Uncleared).PadLeft(12)}"
+            );
+        }
+
+        Console.WriteLine();
+        Console.WriteLine("One request. Compare against the closing balance each export prints.");
+        return 0;
+    }
+
+    private static string Amount(Money money) =>
+        money.Amount.ToString("N2", System.Globalization.CultureInfo.InvariantCulture);
+
     private static async Task<int> ApplyAsync(YnabOptions options)
     {
         var path = options.Required("plan");
@@ -194,16 +236,36 @@ public static class YnabCli
 
         PrintPlan(plan);
 
+        // Rows to add leave as files, because importing them costs nothing: the allowance is spent on
+        // the changes a file cannot carry — removing, moving and categorising.
+        var importFolder = options.Or("csv", Path.Combine(Path.GetDirectoryName(Path.GetFullPath(path)) ?? ".", "import"));
+        var files = PlanCsv.Write(plan, importFolder);
+
         if (!options.Has("apply"))
         {
             Console.WriteLine();
-            Console.WriteLine("Dry run — nothing was changed. Add `--apply` to do it.");
+            Console.WriteLine($"Rows to add are in {importFolder} — import them in YNAB, which costs no request.");
+            foreach (var file in files)
+            {
+                Console.WriteLine($"  {file}");
+            }
+
+            Console.WriteLine("Dry run — nothing was changed. Add `--apply` to remove, move and categorise.");
             return 0;
         }
 
         using var http = new HttpClient();
-        var result = await PlanApplier.ApplyAsync(plan, Gateway(http), options.Or("journal", "artifacts/ynab/journal.jsonl"));
+        var throughTheApi = options.Has("create") ? plan : plan with { Creates = [] };
+        var result = await PlanApplier.ApplyAsync(
+            throughTheApi,
+            Gateway(http),
+            options.Or("journal", "artifacts/ynab/journal.jsonl")
+        );
         Report(result);
+
+        Console.WriteLine();
+        Console.WriteLine($"{files.Count} file(s) in {importFolder} hold the {plan.Creates.Count} row(s) to add.");
+        Console.WriteLine("Import them in YNAB — that costs no request from the allowance.");
 
         return result.Clean ? 0 : 1;
     }
@@ -292,10 +354,10 @@ public static class YnabCli
 
     private static string? Token() => Environment.GetEnvironmentVariable(TokenVariable);
 
-    private static IYnabGateway Gateway(HttpClient http, Action<string>? say = null) =>
+    private static IYnabGateway Gateway(HttpClient http, Action<string>? say = null, TimeSpan? waitWorthTaking = null) =>
         string.IsNullOrWhiteSpace(Token())
             ? throw new MissingTokenException(TokenVariable)
-            : new YnabApi(http, Token()!, Requests(), say: say);
+            : new YnabApi(http, Token()!, Requests(), say: say, waitWorthTaking: waitWorthTaking);
 
     /// <summary>
     /// The hour is counted in one file, so two commands a minute apart spend one allowance of 200
@@ -380,6 +442,7 @@ public static class YnabCli
         Console.WriteLine("  plans      List the plans this token can see.");
         Console.WriteLine("  snapshot   Read the plan into a file all other commands work offline from.");
         Console.WriteLine("  accounts   Print the accounts and balances of a snapshot.");
+        Console.WriteLine("  balances   Print the plan's balance per account; one request, no snapshot.");
         Console.WriteLine("  reconcile  Hold the export against the plan; write the report and the repair plan.");
         Console.WriteLine("  apply      Show the repair plan; with --apply, carry it out and journal it.");
         Console.WriteLine("  undo       Reverse what a journal lists; needs --apply.");
@@ -396,6 +459,8 @@ public static class YnabCli
         Console.WriteLine("  --journal FILE       The undo journal (default: artifacts/ynab/journal.jsonl).");
         Console.WriteLine("  --plan-id ID         The plan an undo belongs to.");
         Console.WriteLine("  --apply              Do it; without it, every changing command is a dry run.");
+        Console.WriteLine("  --csv DIR            Where the rows to add are written for importing (free of charge).");
+        Console.WriteLine("  --create             Add the rows through the API as well, instead of importing them.");
         Console.WriteLine("  --no-balance-repair  Leave the ledger alone; only report.");
         Console.WriteLine("  --no-categorize      Do not carry the category proposals into the plan.");
         Console.WriteLine("  --no-duplicates      Leave duplicated transactions where they are.");

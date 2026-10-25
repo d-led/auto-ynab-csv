@@ -10,18 +10,18 @@ public class RepairPlanTransferTest
 {
     private static readonly YnabAccount Giro = Account("acc-giro", "DKB Giro");
 
-    private static readonly YnabAccount Together = Account("acc-together", "GiroTogether");
+    private static readonly YnabAccount Together = Account("acc-together", "Shared");
 
     [TestMethod]
     public void AMovementBetweenTwoAccountsIsAddedOnceAsATransfer()
     {
-        var outgoing = Row(0, "2026-01-14", -218m, "Girokonto · 4781");
-        var incoming = Row(1, "2026-01-14", 218m, "Girokonto · 3784");
+        var outgoing = Row(0, "2026-01-14", -218m, "Girokonto · 0002");
+        var incoming = Row(1, "2026-01-14", 218m, "Girokonto · 0003");
 
         var plan = RepairPlanBuilder.From(
             ReconciliationWith(
                 [AccountReconciliationOf(Giro, outgoing), AccountReconciliationOf(Together, incoming)],
-                [new Transfer(outgoing, incoming, "Girokonto · 4781", "Girokonto · 3784", 0, ConfirmedByAccountNumber: true)]
+                [new Transfer(outgoing, incoming, "Girokonto · 0002", "Girokonto · 0003", 0, ConfirmedByAccountNumber: true)]
             ),
             []
         );
@@ -62,40 +62,43 @@ public class RepairPlanTransferTest
     [TestMethod]
     public void ATransferPointingAtTheWrongAccountIsReplacedNotKept()
     {
-        var wrongOut = Sample.T("w1", "2025-10-29", -500m, "Transfer : GiroTogether", transferAccountId: Together.Id);
+        var wrongOut = Sample.T("w1", "2025-10-29", -500m, "Transfer : Shared", transferAccountId: Together.Id);
         var wrongIn = Sample.T("w2", "2025-10-29", 500m, "Transfer : DKB Giro", transferAccountId: Giro.Id);
-        var realOut = Row(10, "2025-10-29", -500m, "Dmitry");
-        var realIn = Row(11, "2025-10-29", 500m, "Dmitry");
+        var realOut = Row(10, "2025-10-29", -500m, "Some Person");
+        var realIn = Row(11, "2025-10-29", 500m, "Some Person");
         var n26 = Account("acc-n26", "n26");
         var real = new Transfer(realOut, realIn, "DKB Giro", "n26", 0, ConfirmedByAccountNumber: true);
 
         var plan = RepairPlanBuilder.From(
             ReconciliationWith(
-                [AccountReconciliationOf(Giro, missing: realOut, extra: wrongOut), AccountReconciliationOf(n26, missing: realIn, extra: wrongIn)],
+                [AccountReconciliationOf(Giro, missing: realOut, extras: [wrongOut]), AccountReconciliationOf(n26, missing: realIn, extras: [wrongIn])],
                 [real],
-                [new TransferRepoint(new PlanTransferPair(wrongOut, wrongIn, "DKB Giro", "GiroTogether"), real)]
+                [new TransferRepoint(new PlanTransferPair(wrongOut, wrongIn, "DKB Giro", "Shared"), real)]
             ),
             []
         );
 
         Assert.AreEqual(1, plan.Creates.Count, "the real transfer, once");
         Assert.AreEqual("acc-n26", plan.Creates[0].TransferAccountId);
-        Assert.AreEqual(1, plan.Deletes.Count, "and the pair the plan invented goes with one delete");
-        Assert.AreEqual("w1", plan.Deletes[0].Transaction.Id);
+        CollectionAssert.AreEquivalent(
+            new[] { "w1", "w2" },
+            plan.Deletes.Select(delete => delete.Transaction.Id).ToArray(),
+            "both halves are asked for; whichever goes first takes the pair with it"
+        );
     }
 
     [TestMethod]
     public void ARowTheBankHasInAnotherAccountIsMovedNotRecreated()
     {
         var inTheWrongAccount = Sample.T("x1", "2025-11-24", -500m, "Transfer : DKB Giro", transferAccountId: Giro.Id);
-        var asTheBankHasIt = Row(20, "2025-11-24", -500m, "Dmitry");
-        var move = new Reaccounting(inTheWrongAccount, "GiroTogether", "DKB Giro", asTheBankHasIt);
+        var asTheBankHasIt = Row(20, "2025-11-24", -500m, "Some Person");
+        var move = new Reaccounting(inTheWrongAccount, "Shared", "DKB Giro", asTheBankHasIt);
 
         var plan = RepairPlanBuilder.From(
             ReconciliationWith(
                 [
                     AccountReconciliationOf(Giro, missing: asTheBankHasIt),
-                    AccountReconciliationOf(Together, extra: inTheWrongAccount),
+                    AccountReconciliationOf(Together, extras: [inTheWrongAccount]),
                 ],
                 reaccountings: [move]
             ),
@@ -116,7 +119,7 @@ public class RepairPlanTransferTest
         var something = new RepairPlan(
             "plan-1",
             DateTimeOffset.UnixEpoch,
-            [new PlannedCreate("acc-giro", "DKB Giro", new DateOnly(2026, 1, 14), -218m, "Dmitry", "memo", "ayc-x", null)],
+            [new PlannedCreate("acc-giro", "DKB Giro", new DateOnly(2026, 1, 14), -218m, "Some Person", "memo", "ayc-x", null)],
             [],
             [],
             [],
@@ -131,7 +134,7 @@ public class RepairPlanTransferTest
     [TestMethod]
     public void DeletingAHalfOfATransferBringsBackTheHalfTheExportHas()
     {
-        var bogus = Sample.T("bad", "2026-04-01", -1.12m, "Transfer : GiroTogether", transferAccountId: Together.Id);
+        var bogus = Sample.T("bad", "2026-04-01", -1.12m, "Transfer : Shared", transferAccountId: Together.Id);
         var wanted = Sample.T("good", "2026-04-01", 1.12m, "Transfer : DKB Giro") with
         {
             AccountId = Together.Id,
@@ -141,7 +144,7 @@ public class RepairPlanTransferTest
 
         var reconciliation = new Reconciliation(
             Snapshot: SnapshotOf(bogus, wanted),
-            Accounts: [AccountReconciliationOf(Giro, extra: bogus), AccountReconciliationOf(Together)],
+            Accounts: [AccountReconciliationOf(Giro, extras: [bogus]), AccountReconciliationOf(Together)],
             Unresolved: [],
             Transfers: [],
             Repoints: [],
@@ -154,6 +157,69 @@ public class RepairPlanTransferTest
         var rescue = plan.Creates.SingleOrDefault(create => create.Amount == 1.12m);
         Assert.IsNotNull(rescue, "and the half the bank does have is written again, or the delete takes it too");
         Assert.AreEqual(Together.Id, rescue.AccountId);
+        Assert.AreEqual("DKB Giro", rescue.PayeeName, "a row that is no longer a transfer cannot be paid to one");
+    }
+
+    [TestMethod]
+    public void APairTheExportsDoNotShowIsRemovedAndNotWrittenBack()
+    {
+        var outLeg = Sample.T("o1", "2024-05-30", -188.48m, "Transfer : DKB Giro", transferAccountId: Together.Id);
+        var inLeg = outLeg with
+        {
+            Id = "i1",
+            Amount = 188.48m,
+            AccountId = Together.Id,
+            AccountName = Together.Name,
+            TransferAccountId = Giro.Id,
+        };
+
+        var plan = RepairPlanBuilder.From(
+            ReconciliationWith(
+                [AccountReconciliationOf(Giro, extras: [outLeg]), AccountReconciliationOf(Together, extras: [inLeg])],
+                snapshot: SnapshotOf(outLeg, inLeg)
+            ),
+            []
+        );
+
+        CollectionAssert.AreEquivalent(
+            new[] { "o1", "i1" },
+            plan.Deletes.Select(delete => delete.Transaction.Id).ToArray(),
+            "both halves go"
+        );
+        Assert.AreEqual(
+            0,
+            plan.Creates.Count,
+            "and nothing is written back, because the exports do not have this movement either"
+        );
+    }
+
+    [TestMethod]
+    public void ADuplicatedLegIsAskedForTwiceAndTheHalfTheBankHasComesBack()
+    {
+        var realHalf = Sample.T("real", "2025-10-29", 500m, "Transfer : Shared", transferAccountId: Together.Id);
+        var firstLeg = Sample.T("leg1", "2025-10-29", -500m, "Transfer : DKB Giro", transferAccountId: Giro.Id);
+        var secondLeg = firstLeg with { Id = "leg2" };
+
+        var plan = RepairPlanBuilder.From(
+            ReconciliationWith(
+                [
+                    AccountReconciliationOf(Giro),
+                    AccountReconciliationOf(Together, extras: [firstLeg, secondLeg]),
+                ],
+                snapshot: SnapshotOf(realHalf, firstLeg, secondLeg)
+            ),
+            []
+        );
+
+        CollectionAssert.AreEquivalent(
+            new[] { "leg1", "leg2" },
+            plan.Deletes.Select(delete => delete.Transaction.Id).ToArray(),
+            "a pair with one leg too many needs the surplus leg asked for by name"
+        );
+        var rescue = plan.Creates.Single();
+        Assert.AreEqual(Giro.Id, rescue.AccountId);
+        Assert.AreEqual(500m, rescue.Amount);
+        Assert.AreEqual("Shared", rescue.PayeeName, "written back as an ordinary row, once");
     }
 
     private static YnabSnapshot SnapshotOf(params YnabTransaction[] transactions) =>
@@ -178,7 +244,7 @@ public class RepairPlanTransferTest
         YnabAccount account,
         BankRow? missing = null,
         DuplicateOf? duplicate = null,
-        YnabTransaction? extra = null
+        IReadOnlyList<YnabTransaction>? extras = null
     ) =>
         new(
             Account: account,
@@ -188,7 +254,7 @@ public class RepairPlanTransferTest
             PlanBalanceAtCutoff: Money.Zero,
             Matches: [],
             MissingInPlan: missing is null ? [] : [missing],
-            OnlyInPlan: extra is null ? [] : [extra],
+            OnlyInPlan: extras ?? [],
             Duplicates: duplicate is null ? [] : [duplicate],
             Adjustments: [],
             ZeroAmountRows: [],
@@ -200,10 +266,11 @@ public class RepairPlanTransferTest
         IReadOnlyList<AccountReconciliation> accounts,
         IReadOnlyList<Transfer>? transfers = null,
         IReadOnlyList<TransferRepoint>? repoints = null,
-        IReadOnlyList<Reaccounting>? reaccountings = null
+        IReadOnlyList<Reaccounting>? reaccountings = null,
+        YnabSnapshot? snapshot = null
     ) =>
         new(
-            Snapshot: Sample.Snapshot(),
+            Snapshot: snapshot ?? Sample.Snapshot(),
             Accounts: accounts,
             Unresolved: [],
             Transfers: transfers ?? [],

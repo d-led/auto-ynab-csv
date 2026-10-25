@@ -78,14 +78,14 @@ public class PlanSummaryTest
 
     private static PlannedDelete Delete(decimal amount, string memo = "memo") =>
         new(
-            "Girokonto · 9004",
+            "Girokonto · 0001",
             Sample.T("t1", "2026-10-23", amount, "Some Shop") with { Memo = memo },
             "the export does not have this row"
         );
 
     private static PlannedCreate Create(decimal amount) =>
-        new("acc-giro", "Girokonto · 9004", new DateOnly(2026, 10, 23), amount, "Some Shop", "memo", "ayc-1", null);
+        new("acc-giro", "Girokonto · 0001", new DateOnly(2026, 10, 23), amount, "Some Shop", "memo", "ayc-1", null);
 
     private static PlannedMove Move(decimal amount) =>
-        new("t1", "acc-a", "acc-b", "Girokonto · 9004", "n26", new DateOnly(2026, 10, 23), amount, "memo");
+        new("t1", "acc-a", "acc-b", "Girokonto · 0001", "n26", new DateOnly(2026, 10, 23), amount, "memo");
 }

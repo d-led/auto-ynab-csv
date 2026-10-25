@@ -40,6 +40,18 @@ public class PlanApplierTest
     }
 
     [TestMethod]
+    public async Task ARowThatIsNotATransferNamesItsFarSidePlainly()
+    {
+        var gateway = new FakeGateway();
+        var create = Create("2026-10-23", -300m) with { PayeeName = "Transfer : DKB Giro" };
+
+        var result = await Apply(Plan(create), gateway);
+
+        Assert.IsTrue(result.Clean, "the API refuses a payee starting with one of its own names");
+        Assert.AreEqual("DKB Giro", gateway.Transactions.Single().PayeeName);
+    }
+
+    [TestMethod]
     public async Task ARowWhoseImportIdOutlivedItIsWrittenUnderAnotherOne()
     {
         var create = Create("2026-10-23", -45.81m);
@@ -49,7 +61,21 @@ public class PlanApplierTest
 
         Assert.AreEqual(1, result.Created, "the id was taken by a row that no longer exists");
         Assert.AreEqual(1, gateway.Transactions.Count);
-        Assert.AreEqual(create.ImportId + "-r2", gateway.Transactions[0].ImportId);
+        Assert.AreNotEqual(create.ImportId, gateway.Transactions[0].ImportId);
+    }
+
+    [TestMethod]
+    public async Task ARowWrittenUnderAnotherIdIsNotWrittenAgainOnTheNextPass()
+    {
+        var create = Create("2026-10-23", -45.81m);
+        var gateway = new FakeGateway().WithBurntImportId(create.ImportId);
+        var plan = Plan(create);
+
+        await Apply(plan, gateway);
+        var second = await Apply(plan, gateway);
+
+        Assert.AreEqual(0, second.Created);
+        Assert.AreEqual(1, gateway.Transactions.Count, "the row is found by what it is, not by the id it carries");
     }
 
     [TestMethod]
@@ -96,7 +122,7 @@ public class PlanApplierTest
         gateway.Seed(transaction);
 
         var result = await Apply(
-            Plan(move: new PlannedMove("t1", "acc", "acc-together", "DKB Giro", "GiroTogether", transaction.Date, transaction.Amount, "x")),
+            Plan(move: new PlannedMove("t1", "acc", "acc-together", "DKB Giro", "Shared", transaction.Date, transaction.Amount, "x")),
             gateway
         );
 

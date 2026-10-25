@@ -48,7 +48,7 @@ public class ReconcilerWindowTest
         var reconciled = Reconcile(
             Giro,
             rows: [Row("2026-10-22", -9.99m)],
-            transactions: [Plan(Giro, "t1", "2026-10-22", -9.99m, "Shop"), Plan(Giro, "t2", "2025-12-30", 0m, "Transfer : Giro Emergency")]
+            transactions: [Plan(Giro, "t1", "2026-10-22", -9.99m, "Shop"), Plan(Giro, "t2", "2025-12-30", 0m, "Transfer : Emergency")]
         );
 
         Assert.AreEqual(1, reconciled.Matches.Count);

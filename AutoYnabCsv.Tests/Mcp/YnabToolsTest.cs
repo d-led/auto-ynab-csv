@@ -17,7 +17,7 @@ public class YnabToolsTest
         var answer = YnabTools.Accounts(folder);
 
         StringAssert.Contains(answer, "Household");
-        StringAssert.Contains(answer, "Girokonto · 9004");
+        StringAssert.Contains(answer, "Girokonto · 0001");
         StringAssert.Contains(answer, "On budget: 0.00");
     }
 
@@ -102,7 +102,7 @@ public class YnabToolsTest
                 new DateTimeOffset(2026, 10, 25, 12, 0, 0, TimeSpan.Zero),
                 Creates:
                 [
-                    new PlannedCreate("acc-giro", "Girokonto · 9004", new DateOnly(2026, 10, 23), -19.71m, "PayPal", "memo", "ayc-1", null)
+                    new PlannedCreate("acc-giro", "Girokonto · 0001", new DateOnly(2026, 10, 23), -19.71m, "PayPal", "memo", "ayc-1", null)
                 ],
                 Deletes: [],
                 Categories: [],

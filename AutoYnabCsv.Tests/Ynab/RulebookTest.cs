@@ -78,7 +78,7 @@ public class RulebookTest
     [TestMethod]
     public void ATransferIsNotCategorizedEvenWhenARuleFitsIt()
     {
-        var transfer = Sample.T("t1", "2026-10-23", -500m, "Transfer : Giro Emergency", transferAccountId: "acc-b");
+        var transfer = Sample.T("t1", "2026-10-23", -500m, "Transfer : Emergency", transferAccountId: "acc-b");
 
         Assert.AreEqual(0, Book(Rule(payeeContains: "Transfer")).Propose([transfer]).Count);
     }

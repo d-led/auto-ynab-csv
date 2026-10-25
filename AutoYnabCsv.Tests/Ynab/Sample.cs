@@ -10,7 +10,7 @@ internal static class Sample
 {
     public static readonly YnabAccount Giro = new(
         "acc-giro",
-        "Girokonto · 9004",
+        "Girokonto · 0001",
         "checking",
         OnBudget: true,
         Closed: false,
