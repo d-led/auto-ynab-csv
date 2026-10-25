@@ -28,6 +28,7 @@
       <ProjectReference Include="..\AutoYnabCsv\AutoYnabCsv.csproj" />
       <ProjectReference Include="..\AutoYnabCsv.MailIndex\AutoYnabCsv.MailIndex.csproj" />
       <ProjectReference Include="..\AutoYnabCsv.Ynab\AutoYnabCsv.Ynab.csproj" />
+      <ProjectReference Include="..\AutoYnabCsv.Mcp\AutoYnabCsv.Mcp.csproj" />
     </ItemGroup>
 
 </Project>

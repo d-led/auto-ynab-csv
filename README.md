@@ -456,10 +456,37 @@ on macOS a single `.app` inside the archive, because macOS needs the bundle):
 
 - [github.com/aniav/ynab-csv](https://github.com/aniav/ynab-csv) - manual number format conversion necessary afterwards, manual clean-up of CSV of summary lines that don't conform to the format
 
+## Using the answers from an editor (MCP, optional)
+
+The reconciliation already knows things you might want to ask about while staying in the editor: what a
+plan would change, what an apply did, how far the plan has drifted from the bank. Those questions read
+files that are already on disk, so answering them costs no API request — which is why they are served
+over MCP rather than as more commands.
+
+```shell
+dotnet build AutoYnabCsv.Mcp        # once; the server runs from the built assembly
+```
+
+`.vscode/mcp.json` registers it. The tools:
+
+| tool | answers |
+| --- | --- |
+| `ynab_accounts` | the accounts of a snapshot and the balance each holds |
+| `ynab_exports` | what a folder of exports contains: account, period, declared balance, rows |
+| `ynab_reconcile` | the full report: balances, missing and extra rows, where the ledgers diverge |
+| `ynab_plan` | a repair plan as tables instead of JSON — add, move, remove |
+| `ynab_journal` | what an apply did, counted and listed |
+
+Nothing here writes, and nothing here calls the API. Reading the plan and writing changes stay in the
+console app, where the request allowance and the `--apply` gate already live.
+
 ## Structure
 
 - [Converters, Detectors, Exporters](./AutoYnabCsv/)
 - [Console App](./AutoYnabCsv.ConsoleApp/)
+- [Plan checking against the bank](./AutoYnabCsv.Ynab/)
+- [MCP server](./AutoYnabCsv.Mcp/)
 - [Unit and Approval Tests](./AutoYnabCsv.Tests/)
     - see [data/samples](./data/samples) for sample inputs
     - see `*.approved.txt` for approved converted files
+

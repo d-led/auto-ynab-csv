@@ -8,17 +8,7 @@ namespace Tests;
 [TestClass]
 public class TransferNamingTest
 {
-    private const string OwnNumber = "DE00000000000000000003";
-
-    private const string DkbGiro = """
-        "Girokonto";"DE00000000000000000002"
-        "Zeitraum:";"01.12.2024 - 31.12.2024"
-        "Kontostand vom 31.12.2024:";"1.234,50 €"
-        ""
-        "Buchungsdatum";"Wertstellung";"Status";"Zahlungspflichtige*r";"Zahlungsempfänger*in";"Verwendungszweck";"Umsatztyp";"IBAN";"Betrag (€)";"Gläubiger-ID";"Mandatsreferenz";"Kundenreferenz"
-        "13.12.24";"12.12.24";"Gebucht";"Me";"Me";"Sparrate";"Ausgang";"DE00000000000000000003";"-500";"","",""
-        "14.12.24";"13.12.24";"Gebucht";"Some Shop";"Some Shop";"Einkauf";"Ausgang";"DE99999999999999999999";"-12,50";"","",""
-        """;
+    private const string OwnNumber = ExportFixture.OwnNumber;
 
     [TestMethod]
     public void AMovementToMyOwnAccountIsNamedAsTheTransferItIs()
@@ -70,8 +60,8 @@ public class TransferNamingTest
 
         var mine = Path.Combine(folder, "19-10-2026_Umsatzliste_Girokonto_DE00000000000000000002.csv");
         var other = Path.Combine(folder, "19-10-2026_Umsatzliste_Tagesgeld_DE00000000000000000003.csv");
-        File.WriteAllText(mine, DkbGiro, Encoding.UTF8);
-        File.WriteAllText(other, WithAccount("DE00000000000000000003"), Encoding.UTF8);
+        File.WriteAllText(mine, ExportFixture.DkbGiro(), Encoding.UTF8);
+        File.WriteAllText(other, ExportFixture.DkbGiro(OwnNumber), Encoding.UTF8);
 
         var converted = TextConversion.ConvertFile(mine);
 
@@ -79,9 +69,7 @@ public class TransferNamingTest
     }
 
     private static IReadOnlyList<YnabImportEntry> Convert(OwnAccountBook own) =>
-        [.. new DkbGiroConverter(own).Convert(DkbGiro)];
+        [.. new DkbGiroConverter(own).Convert(ExportFixture.DkbGiro())];
 
     private static OwnAccountBook Book(string name) => new([(OwnNumber, name)]);
-
-    private static string WithAccount(string iban) => DkbGiro.Replace("DE00000000000000000002", iban, StringComparison.Ordinal);
 }

@@ -15,6 +15,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AutoYnabCsv.MailIndex", "Au
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AutoYnabCsv.Ynab", "AutoYnabCsv.Ynab\AutoYnabCsv.Ynab.csproj", "{327114D4-B52D-4825-BEC9-DD94FCC9DB4A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AutoYnabCsv.Mcp", "AutoYnabCsv.Mcp\AutoYnabCsv.Mcp.csproj", "{CC9D5D96-2DE9-4234-9E80-56A4032E9464}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -97,6 +99,18 @@ Global
 		{327114D4-B52D-4825-BEC9-DD94FCC9DB4A}.Release|x64.Build.0 = Release|Any CPU
 		{327114D4-B52D-4825-BEC9-DD94FCC9DB4A}.Release|x86.ActiveCfg = Release|Any CPU
 		{327114D4-B52D-4825-BEC9-DD94FCC9DB4A}.Release|x86.Build.0 = Release|Any CPU
+		{CC9D5D96-2DE9-4234-9E80-56A4032E9464}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CC9D5D96-2DE9-4234-9E80-56A4032E9464}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CC9D5D96-2DE9-4234-9E80-56A4032E9464}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{CC9D5D96-2DE9-4234-9E80-56A4032E9464}.Debug|x64.Build.0 = Debug|Any CPU
+		{CC9D5D96-2DE9-4234-9E80-56A4032E9464}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{CC9D5D96-2DE9-4234-9E80-56A4032E9464}.Debug|x86.Build.0 = Debug|Any CPU
+		{CC9D5D96-2DE9-4234-9E80-56A4032E9464}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CC9D5D96-2DE9-4234-9E80-56A4032E9464}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CC9D5D96-2DE9-4234-9E80-56A4032E9464}.Release|x64.ActiveCfg = Release|Any CPU
+		{CC9D5D96-2DE9-4234-9E80-56A4032E9464}.Release|x64.Build.0 = Release|Any CPU
+		{CC9D5D96-2DE9-4234-9E80-56A4032E9464}.Release|x86.ActiveCfg = Release|Any CPU
+		{CC9D5D96-2DE9-4234-9E80-56A4032E9464}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
