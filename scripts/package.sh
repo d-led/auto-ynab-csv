@@ -6,6 +6,10 @@ IFS=$'\n\t'
 # Usage: ./scripts/package.sh [rid ...]
 #   osx-arm64 osx-x64 win-x64 win-arm64 linux-x64 linux-musl-arm64
 # With no argument it packs for the machine it runs on.
+#
+# Each archive holds two programs that need nothing installed: `auto-ynab-csv`, the command line, and
+# `auto-ynab-csv-mcp`, the server an editor starts. The second is why a person can wire the tools into
+# their editor without a .NET runtime on the machine.
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
@@ -35,6 +39,7 @@ for rid in "${rids[@]}"; do
   echo "== $rid"
 
   publish AutoYnabCsv.ConsoleApp "$rid"
+  publish AutoYnabCsv.Mcp "$rid"
   publish AutoYnabCsv.DesktopApp "$rid"
 
   if [[ "$rid" == osx-* ]]; then
@@ -55,3 +60,6 @@ for rid in "${rids[@]}"; do
 done
 
 echo "Artifacts in $out"
+echo
+echo "Note: packing a runtime writes that runtime into each packages.lock.json it touched."
+echo "Put them back before committing: git checkout -- '*/packages.lock.json'"

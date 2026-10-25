@@ -446,9 +446,26 @@ to add an extraction rule, see [docs/developer-guide.md](docs/developer-guide.md
 
 ### Download a Release
 
-- pick a [release](https://github.com/d-led/auto-ynab-csv/releases).
-- download the desired artifact && unpack.
-- On OSX you might need to run `sudo xattr -d com.apple.quarantine auto-ynab-csv` on the downloaded binary.
+- pick a [release](https://github.com/d-led/auto-ynab-csv/releases) — `osx-arm64`, `osx-x64`,
+  `linux-x64` or `win-x64`.
+- unpack it and put the two programs where your shell finds them. **Nothing needs to be installed**:
+  each is one self-contained file.
+
+  | file | what it is |
+  | --- | --- |
+  | `auto-ynab-csv` | the command line — convert exports, check a plan against them, apply a repair |
+  | `auto-ynab-csv-mcp` | the server an editor starts, so the answers are a question away (below) |
+
+  ```shell
+  chmod +x auto-ynab-csv auto-ynab-csv-mcp
+  sudo mv auto-ynab-csv auto-ynab-csv-mcp /usr/local/bin/     # or anywhere on your PATH
+  ```
+
+- On OSX you might need to clear the quarantine flag on both:
+  `sudo xattr -d com.apple.quarantine /usr/local/bin/auto-ynab-csv*`.
+
+A macOS bundle (`AutoYnabCsv.DesktopApp.app`) travels in the same archive, because macOS needs the
+bundle for its window identity and privacy grants.
 
 ### Build Yourself
 
@@ -491,21 +508,24 @@ over MCP rather than as more commands.
 
 ### What you need first
 
-1. **The .NET 10 SDK.** Same as the rest of this project: `dotnet --version` should print 10 or later.
-2. **The server, built.** The editor starts a *built* assembly, so build it once and again after
-   changing the code:
+1. **Nothing, if you took a release.** `auto-ynab-csv-mcp` from the archive is a self-contained
+   binary; the editor starts it directly. Skip to *Registering it*.
+
+   **Or the .NET 10 SDK, if you work from source.** Same as the rest of this project:
+   `dotnet --version` should print 10 or later — and the server has to be built, because the editor
+   starts a *built* assembly:
 
    ```shell
    dotnet build AutoYnabCsv.Mcp
    ```
 
-   It lands in `AutoYnabCsv.Mcp/bin/Debug/net10.0/AutoYnabCsv.Mcp.dll`. If that file is missing the
+   It lands in `AutoYnabCsv.Mcp/bin/Debug/net10.0/auto-ynab-csv-mcp.dll`. If that file is missing the
    server shows as failed in the editor with "no such file" — build it.
-3. **Something to read.** Every tool reports on files the console app produced earlier, so run
+2. **Something to read.** Every tool reports on files the console app produced earlier, so run
    `ynab snapshot` (and `ynab reconcile`, `ynab plan`, `ynab apply`) at least once. The default
    locations are `artifacts/ynab/<stamp>/` and `artifacts/ynab/journal-*.jsonl`; both are git-ignored
    and never committed.
-4. **Your account mapping, one file, outside the repository.** The same file `scripts/check.sh` reads:
+3. **Your account mapping, one file, outside the repository.** The same file `scripts/check.sh` reads:
 
    ```shell
    mkdir -p ~/.config/auto-ynab-csv
@@ -526,13 +546,30 @@ over MCP rather than as more commands.
 
 ### Registering it
 
-The workspace already carries `.vscode/mcp.json`, so in VS Code:
+Create `.vscode/mcp.json` if it is not there yet (it is deliberately not tracked — the command in it
+is yours, not the repository's), paste the block for the way you installed this, then in VS Code:
 
 1. Open the Explorer or run **MCP: List Servers** from the command palette (`F1`).
 2. `auto-ynab-csv` is listed; choose **Start** (or open the file and press the ▶ above it).
 3. The editor asks you to trust the server the first time — it runs local code, so say yes.
 
-To use it in another editor or in your own client, the registration is plain stdio:
+To use it in another editor or in your own client, the registration is plain stdio. **If you
+downloaded a release**, the command is the binary itself — no runtime, no path to a DLL:
+
+```json
+{
+  "servers": {
+    "auto-ynab-csv": {
+      "type": "stdio",
+      "command": "auto-ynab-csv-mcp"
+    }
+  }
+}
+```
+
+**If you built from source**, point it at the built assembly instead — and run `dotnet <dll>`, not
+`dotnet run`: `run` prints build output on the same channel the protocol uses, and the client sees
+that as garbage.
 
 ```json
 {
@@ -540,14 +577,11 @@ To use it in another editor or in your own client, the registration is plain std
     "auto-ynab-csv": {
       "type": "stdio",
       "command": "dotnet",
-      "args": ["${workspaceFolder}/AutoYnabCsv.Mcp/bin/Debug/net10.0/AutoYnabCsv.Mcp.dll"]
+      "args": ["${workspaceFolder}/AutoYnabCsv.Mcp/bin/Debug/net10.0/auto-ynab-csv-mcp.dll"]
     }
   }
 }
 ```
-
-Run the assembly with `dotnet <dll>`, not `dotnet run`: `run` prints build output on the same channel
-the protocol uses, and the client sees that as garbage.
 
 ### The tools
 

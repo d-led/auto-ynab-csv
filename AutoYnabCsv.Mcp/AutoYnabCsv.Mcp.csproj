@@ -9,6 +9,11 @@
     <Company>github.com/d-led</Company>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     <RootNamespace>AutoYnabCsv.Mcp</RootNamespace>
+    <!-- The name an editor puts in `command`: no dotnet, no path juggling, no runtime to install. -->
+    <AssemblyName>auto-ynab-csv-mcp</AssemblyName>
+    <PublishSingleFile>true</PublishSingleFile>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <Version>0.0.3</Version>
   </PropertyGroup>
 
   <ItemGroup>
