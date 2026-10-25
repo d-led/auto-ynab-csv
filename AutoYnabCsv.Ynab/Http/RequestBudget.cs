@@ -11,8 +11,15 @@ public sealed class RequestBudget
 
     public static readonly TimeSpan Window = TimeSpan.FromHours(1);
 
+    /// <summary>Two requests are never back to back: a snapshot then reads as a walk, not a hammer.</summary>
+    public static readonly TimeSpan DefaultInterval = TimeSpan.FromMilliseconds(300);
+
+    /// <summary>The share of the hour below which what is left is spread instead of spent at once.</summary>
+    private const int ReserveShare = 10;
+
     private readonly List<DateTimeOffset> _spent;
     private readonly int _perHour;
+    private readonly TimeSpan _minimumInterval;
     private readonly string? _ledgerPath;
     private readonly Func<DateTimeOffset> _clock;
     private readonly Func<TimeSpan, CancellationToken, Task> _wait;
@@ -23,13 +30,15 @@ public sealed class RequestBudget
         int perHour = PerHour,
         string? ledgerPath = null,
         Func<DateTimeOffset>? clock = null,
-        Func<TimeSpan, CancellationToken, Task>? wait = null
+        Func<TimeSpan, CancellationToken, Task>? wait = null,
+        TimeSpan? minimumInterval = null
     )
     {
         _perHour = perHour;
         _ledgerPath = ledgerPath;
         _clock = clock ?? (() => DateTimeOffset.UtcNow);
         _wait = wait ?? ((delay, token) => Task.Delay(delay, token));
+        _minimumInterval = minimumInterval ?? DefaultInterval;
 
         var cutoff = _clock() - Window;
         _spent = [.. ReadLedger().Where(spent => spent > cutoff).OrderBy(spent => spent)];
@@ -43,8 +52,9 @@ public sealed class RequestBudget
     public int Remaining => Math.Max(0, _perHour - Spent);
 
     /// <summary>
-    /// Waits while the window is full — but only that long. An hour of sitting still is not a wait a
-    /// command line should take without being asked, so a longer one is refused and dated instead.
+    /// Waits as long as the pace asks for — a floor between requests, or more when the hour is nearly
+    /// gone. Waiting for the window to have room at all is the one wait that can be refused: an hour
+    /// of sitting still is not a decision a command line should make on its own.
     /// </summary>
     public async Task AcquireAsync(
         TimeSpan longestWait,
@@ -52,12 +62,18 @@ public sealed class RequestBudget
         CancellationToken cancellationToken = default
     )
     {
-        var delay = DelayBeforeNext();
+        Forget();
 
-        if (delay > longestWait)
+        var now = _clock();
+        var untilThereIsRoom = _spent.Count < _perHour ? TimeSpan.Zero : _spent[0] + Window - now;
+
+        if (untilThereIsRoom > longestWait)
         {
-            throw new RequestBudgetExhaustedException(delay);
+            throw new RequestBudgetExhaustedException(untilThereIsRoom);
         }
+
+        var spacing = Spacing(now);
+        var delay = untilThereIsRoom > spacing ? untilThereIsRoom : spacing;
 
         if (delay > TimeSpan.Zero)
         {
@@ -68,11 +84,43 @@ public sealed class RequestBudget
         Spend(_clock());
     }
 
-    /// <summary>How long the next request has to wait; nothing when there is room for it.</summary>
+    /// <summary>How long the next request has to wait; nothing when it may go straight away.</summary>
     public TimeSpan DelayBeforeNext()
     {
         Forget();
-        return _spent.Count < _perHour ? TimeSpan.Zero : _spent[0] + Window - _clock();
+
+        var now = _clock();
+        var untilThereIsRoom = _spent.Count < _perHour ? TimeSpan.Zero : _spent[0] + Window - now;
+        var spacing = Spacing(now);
+
+        return untilThereIsRoom > spacing ? untilThereIsRoom : spacing;
+    }
+
+    /// <summary>
+    /// The pace: a floor between any two requests, and — once the hour is nearly gone — the rest of
+    /// it spread over the time the window has left, so the last twenty requests are not spent in one
+    /// breath and then waited out.
+    /// </summary>
+    private TimeSpan Spacing(DateTimeOffset now)
+    {
+        if (_spent.Count == 0)
+        {
+            return TimeSpan.Zero;
+        }
+
+        var sinceLast = _spent[^1] + _minimumInterval - now;
+        var floor = sinceLast > TimeSpan.Zero ? sinceLast : TimeSpan.Zero;
+        var left = _perHour - _spent.Count;
+
+        if (left > _perHour / ReserveShare)
+        {
+            return floor;
+        }
+
+        // One more slot than is left, so the last request still lands inside the window rather than
+        // exactly as the oldest one expires.
+        var spread = left > 0 ? (_spent[0] + Window - now) / (left + 1) : TimeSpan.Zero;
+        return spread > floor ? spread : floor;
     }
 
     private void Spend(DateTimeOffset at)
