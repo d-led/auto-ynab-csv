@@ -171,56 +171,79 @@ public static class ReconcileReport
 
     private static void Extras(StringBuilder text, Reconciliation reconciliation)
     {
-        var extras = reconciliation.Accounts
-            .SelectMany(account => account.OnlyInPlan.Select(transaction => (account, transaction)))
-            .ToList();
+        var extras = reconciliation.Accounts.Sum(account => account.OnlyInPlan.Count);
+        var duplicates = reconciliation.Accounts.Sum(account => account.Duplicates.Count);
+
+        text.AppendLine($"## In the plan but not in the export — {extras + duplicates} row(s)");
+        text.AppendLine();
+
+        Duplicates(text, reconciliation);
+        Corrections(text, reconciliation);
+        WithoutABankRow(text, reconciliation);
+    }
+
+    private static void Duplicates(StringBuilder text, Reconciliation reconciliation)
+    {
         var duplicates = reconciliation.Accounts
             .SelectMany(account => account.Duplicates.Select(duplicate => (account, duplicate)))
             .ToList();
+
+        if (duplicates.Count == 0)
+        {
+            return;
+        }
+
+        text.AppendLine("### Looks like the same movement twice");
+        text.AppendLine();
+        text.AppendLine("| date | account | amount | kept as | duplicate |");
+        text.AppendLine("| --- | --- | ---: | --- | --- |");
+
+        foreach (var (account, duplicate) in duplicates.OrderBy(pair => pair.duplicate.Extra.Date))
+        {
+            text.AppendLine(
+                $"| {duplicate.Extra.Date:yyyy-MM-dd} | {Cell(account.Label)} | {Amount(duplicate.Extra.Amount)} "
+                + $"| {Cell(duplicate.Kept.Description)} | {Cell(duplicate.Extra.Description)} |"
+            );
+        }
+
+        text.AppendLine();
+    }
+
+    private static void Corrections(StringBuilder text, Reconciliation reconciliation)
+    {
         var adjustments = reconciliation.Accounts
             .SelectMany(account => account.Adjustments.Select(adjustment => (account, adjustment)))
             .ToList();
 
-        text.AppendLine($"## In the plan but not in the export — {extras.Count + duplicates.Count} row(s)");
+        if (adjustments.Count == 0)
+        {
+            return;
+        }
+
+        text.AppendLine("### Corrections that may be holding a gap shut");
         text.AppendLine();
 
-        if (duplicates.Count > 0)
+        foreach (var (account, adjustment) in adjustments.OrderBy(pair => pair.adjustment.Transaction.Date))
         {
-            text.AppendLine("### Looks like the same movement twice");
-            text.AppendLine();
-            text.AppendLine("| date | account | amount | kept as | duplicate |");
-            text.AppendLine("| --- | --- | ---: | --- | --- |");
-
-            foreach (var (account, duplicate) in duplicates.OrderBy(pair => pair.duplicate.Extra.Date))
-            {
-                text.AppendLine(
-                    $"| {duplicate.Extra.Date:yyyy-MM-dd} | {Cell(account.Label)} | {Amount(duplicate.Extra.Amount)} "
-                    + $"| {Cell(duplicate.Kept.Description)} | {Cell(duplicate.Extra.Description)} |"
-                );
-            }
-
-            text.AppendLine();
+            var transaction = adjustment.Transaction;
+            text.AppendLine(
+                $"- **{account.Label}** {transaction.Date:yyyy-MM-dd} {Amount(transaction.Amount)} "
+                + $"`{Cell(transaction.Description)}` — {adjustment.Why}"
+            );
         }
 
-        if (adjustments.Count > 0)
-        {
-            text.AppendLine("### Corrections that may be holding a gap shut");
-            text.AppendLine();
+        text.AppendLine();
+    }
 
-            foreach (var (account, adjustment) in adjustments.OrderBy(pair => pair.adjustment.Transaction.Date))
-            {
-                var transaction = adjustment.Transaction;
-                text.AppendLine(
-                    $"- **{account.Label}** {transaction.Date:yyyy-MM-dd} {Amount(transaction.Amount)} "
-                    + $"`{Cell(transaction.Description)}` — {adjustment.Why}"
-                );
-            }
+    private static void WithoutABankRow(StringBuilder text, Reconciliation reconciliation)
+    {
+        var corrections = reconciliation.Accounts
+            .SelectMany(account => account.Adjustments.Select(adjustment => adjustment.Transaction.Id))
+            .ToHashSet(StringComparer.Ordinal);
 
-            text.AppendLine();
-        }
-
-        var plain = extras
-            .Where(pair => !adjustments.Any(adjustment => adjustment.adjustment.Transaction.Id == pair.transaction.Id))
+        var plain = reconciliation.Accounts
+            .SelectMany(account => account.OnlyInPlan.Select(transaction => (account, transaction)))
+            .Where(pair => !corrections.Contains(pair.transaction.Id))
             .ToList();
 
         if (plain.Count == 0)

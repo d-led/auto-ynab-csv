@@ -315,6 +315,9 @@ The converter's job ends at importable rows. This one does not: it reads your YN
 and holds it against the same exports, so "does my plan say what my bank says" is a question with an
 answer instead of a feeling.
 
+The whole loop in one page — check, apply, check again, and which number to look at — is
+[docs/workflow.md](docs/workflow.md).
+
 ```shell
 export YNAB_TOKEN=...            # a personal access token; read from the environment, never printed
 auto-ynab-csv ynab snapshot  --out artifacts/ynab

@@ -109,6 +109,25 @@ public class RepairPlanTransferTest
         Assert.AreEqual("acc-together", plan.Moves[0].FromAccountId);
     }
 
+    [TestMethod]
+    public void APlanWithNothingToDoSaysSo()
+    {
+        var nothing = new RepairPlan("plan-1", DateTimeOffset.UnixEpoch, [], [], [], [], []);
+        var something = new RepairPlan(
+            "plan-1",
+            DateTimeOffset.UnixEpoch,
+            [new PlannedCreate("acc-giro", "DKB Giro", new DateOnly(2026, 1, 14), -218m, "Dmitry", "memo", "ayc-x", null)],
+            [],
+            [],
+            [],
+            []
+        );
+
+        Assert.IsTrue(nothing.IsEmpty);
+        Assert.IsFalse(something.IsEmpty, "one row to add is not nothing");
+        Assert.AreEqual(1, something.Total);
+    }
+
     private static YnabAccount Account(string id, string name) =>
         new(id, name, "checking", OnBudget: true, Closed: false, Money.Zero, Money.Zero, Money.Zero);
 

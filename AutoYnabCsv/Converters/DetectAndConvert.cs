@@ -3,9 +3,11 @@ using AutoYnabCsv.Detectors;
 
 namespace AutoYnabCsv.Converters;
 
-public class DetectAndConvert : IConvertInput
+public class DetectAndConvert(OwnAccountBook? own = null) : IConvertInput
 {
     public static readonly IConvertInput Instance = new DetectAndConvert();
+
+    private readonly OwnAccountBook _own = own ?? OwnAccountBook.None;
 
     public IEnumerable<YnabImportEntry> Convert(string input)
     {
@@ -19,12 +21,12 @@ public class DetectAndConvert : IConvertInput
         return conversion.Convert(input);
     }
 
-    private static IConvertInput ChooseConverter(string detectionSourceType)
+    private IConvertInput ChooseConverter(string detectionSourceType)
     {
         IConvertInput? converter = detectionSourceType switch
         {
-            KnownSources.N26Source => new N26Converter(),
-            KnownSources.DkbGiroSource => new DkbGiroConverter(),
+            KnownSources.N26Source => new N26Converter(_own),
+            KnownSources.DkbGiroSource => new DkbGiroConverter(_own),
             KnownSources.DkbVisaSource => new DkbVisaConverter(),
             _ => null
         };

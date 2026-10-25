@@ -16,6 +16,58 @@ public class TransferFinderTest
     );
 
     [TestMethod]
+    public void ARowTheBankHasInAnotherAccountIsOfferedAsAMove()
+    {
+        var moves = TransferFinder.Reaccountings(
+            [new RowOf("Girokonto · 3784", Row(0, "2026-01-14", -300m, Giro))],
+            [("Girokonto · 9004", Sample.T("t1", "2026-01-14", -300m, "Dmitry"))]
+        );
+
+        Assert.AreEqual(1, moves.Count);
+        Assert.AreEqual("Girokonto · 9004", moves[0].FromLabel);
+        Assert.AreEqual("Girokonto · 3784", moves[0].ToLabel);
+    }
+
+    [TestMethod]
+    public void ARowThePlanAlreadyHasInThatAccountIsNotMoved()
+    {
+        var moves = TransferFinder.Reaccountings(
+            [new RowOf("Girokonto · 9004", Row(0, "2026-01-14", -300m, Giro))],
+            [("Girokonto · 9004", Sample.T("t1", "2026-01-14", -300m, "Dmitry"))]
+        );
+
+        Assert.AreEqual(0, moves.Count, "it is already where the bank has it");
+    }
+
+    [TestMethod]
+    public void TheNearestDayIsTheOneThatExplainsTheMove()
+    {
+        var moves = TransferFinder.Reaccountings(
+            [new RowOf("Girokonto · 3784", Row(0, "2026-01-14", -300m, Giro))],
+            [
+                ("Girokonto · 9004", Sample.T("far", "2026-01-18", -300m, "Dmitry")),
+                ("Girokonto · 9004", Sample.T("near", "2026-01-14", -300m, "Dmitry")),
+            ]
+        );
+
+        Assert.AreEqual("near", moves.Single().Transaction.Id);
+    }
+
+    [TestMethod]
+    public void OnePlanRowCannotExplainTwoBankRows()
+    {
+        var moves = TransferFinder.Reaccountings(
+            [
+                new RowOf("Girokonto · 3784", Row(0, "2026-01-14", -300m, Giro)),
+                new RowOf("Girokonto · 3784", Row(1, "2026-01-15", -300m, Giro)),
+            ],
+            [("Girokonto · 9004", Sample.T("t1", "2026-01-14", -300m, "Dmitry"))]
+        );
+
+        Assert.AreEqual(1, moves.Count);
+    }
+
+    [TestMethod]
     public void TwoHalvesOfATransferAreOneMovement()
     {
         var transfers = TransferFinder.Pair(

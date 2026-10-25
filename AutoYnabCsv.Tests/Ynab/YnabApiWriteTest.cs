@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using AutoYnabCsv.Ynab;
 using AutoYnabCsv.Ynab.Apply;
 using AutoYnabCsv.Ynab.Contracts;
 using AutoYnabCsv.Ynab.Http;
@@ -11,6 +12,15 @@ internal sealed class StubHandler : HttpMessageHandler
 {
     internal const string NewId = "t-new";
 
+    private readonly HttpStatusCode _status;
+    private readonly string _body;
+
+    public StubHandler(HttpStatusCode status = HttpStatusCode.OK, string? body = null)
+    {
+        _status = status;
+        _body = body ?? OneTransaction(NewId);
+    }
+
     public List<(string Method, string Path, string Body)> Requests { get; } = [];
 
     protected override async Task<HttpResponseMessage> SendAsync(
@@ -21,9 +31,9 @@ internal sealed class StubHandler : HttpMessageHandler
         var body = request.Content is null ? string.Empty : await request.Content.ReadAsStringAsync(cancellationToken);
         Requests.Add((request.Method.Method, request.RequestUri!.PathAndQuery, body));
 
-        return new HttpResponseMessage(HttpStatusCode.OK)
+        return new HttpResponseMessage(_status)
         {
-            Content = new StringContent(OneTransaction(NewId), System.Text.Encoding.UTF8, "application/json"),
+            Content = new StringContent(_body, System.Text.Encoding.UTF8, "application/json"),
         };
     }
 
@@ -84,6 +94,22 @@ public class YnabApiWriteTest
         var sent = TransactionOf(handler);
         Assert.AreEqual("acc-b", sent.GetProperty("account_id").GetString());
         Assert.AreEqual(1, sent.EnumerateObject().Count(), "a move rewrites nothing else on the row");
+    }
+
+    [TestMethod]
+    public async Task ARefusalKeepsTheReasonTheApiGave()
+    {
+        var handler = new StubHandler(
+            HttpStatusCode.BadRequest,
+            """
+            {"error":{"id":"400","name":"bad_request","detail":"cleared must be an allowed value"}}
+            """
+        );
+        var api = new YnabApi(new HttpClient(handler), "token");
+
+        var failure = await Assert.ThrowsExactlyAsync<YnabApiException>(() => api.CreateAsync("plan-1", Planned("memo")));
+
+        StringAssert.Contains(failure.Message, "cleared must be an allowed value", "the reason is the message, not the status");
     }
 
     private static async Task<JsonElement> Create(PlannedCreate create)

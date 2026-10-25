@@ -5,8 +5,10 @@ using CsvHelper.Configuration;
 
 namespace AutoYnabCsv.Converters;
 
-public class DkbGiroConverter : IConvertInput
+public class DkbGiroConverter(OwnAccountBook? own = null) : IConvertInput
 {
+    private readonly OwnAccountBook _own = own ?? OwnAccountBook.None;
+
     public IEnumerable<YnabImportEntry> Convert(string input)
     {
         var filteredText = string.Join("\n", input
@@ -29,8 +31,8 @@ public class DkbGiroConverter : IConvertInput
                 .ToList()
                 .Select(entry => new YnabImportEntry(
                     Date: entry.BookingDate,
-                    Payee: entry.Amount > 0 ? entry.Payer : entry.Payee,
-                    Memo: entry.Purpose,
+                    Payee: TransferNaming.Payee(entry.Amount > 0 ? entry.Payer : entry.Payee, entry.Iban, _own),
+                    Memo: TransferNaming.Memo(entry.Purpose, entry.Iban, _own),
                     Inflow: entry.Amount > 0 ? Math.Abs(entry.Amount) : 0,
                     Outflow: entry.Amount < 0 ? Math.Abs(entry.Amount) : 0,
                     CounterpartyIban: entry.Iban))
