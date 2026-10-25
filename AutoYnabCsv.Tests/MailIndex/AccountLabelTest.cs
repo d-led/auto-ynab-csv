@@ -1,4 +1,4 @@
-using AutoYnabCsv.MailIndex.Web;
+using AutoYnabCsv.Contracts;
 
 namespace Tests;
 
@@ -40,6 +40,15 @@ public class AccountLabelTest
         Assert.AreEqual(
             "n26",
             AccountLabel.Of("n26-00000000-0000-0000-0000-000000000000.csv")
+        );
+    }
+
+    [TestMethod]
+    public void AUuidInFrontOfTheNameIsStillTheAccount()
+    {
+        Assert.AreEqual(
+            "n26",
+            AccountLabel.Of("00000000-0000-0000-0000-000000000000-n26.csv")
         );
     }
 }

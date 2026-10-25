@@ -18,7 +18,8 @@ public class N26Converter : IConvertInput
                     Payee: entry.PartnerName,
                     Memo: entry.PaymentReference,
                     Inflow: entry.Amount > 0 ? Math.Abs(entry.Amount) : 0,
-                    Outflow: entry.Amount < 0 ? Math.Abs(entry.Amount) : 0))
+                    Outflow: entry.Amount < 0 ? Math.Abs(entry.Amount) : 0,
+                    CounterpartyIban: entry.PartnerIban))
             ;
     }
 }

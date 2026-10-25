@@ -11,4 +11,6 @@ public static class TestHelpers
         var input = File.ReadAllText(Path.Join(SamplesDir, sample), Encoding.UTF8);
         return input;
     }
+
+    public static string SamplePathOf(string sample) => Path.Join(SamplesDir, sample);
 }

@@ -309,6 +309,70 @@ message's text is read — the reader's own version is part of the same fingerpr
 `mail sync --full`. Everything else, including the phrases under `transfers` and how a memo is
 written, takes effect on the next conversion without touching the index.
 
+## Checking the plan against the bank exports (optional)
+
+The converter's job ends at importable rows. This one does not: it reads your YNAB plan over the API
+and holds it against the same exports, so "does my plan say what my bank says" is a question with an
+answer instead of a feeling.
+
+```shell
+export YNAB_TOKEN=...            # a personal access token; read from the environment, never printed
+auto-ynab-csv ynab snapshot  --out artifacts/ynab
+auto-ynab-csv ynab reconcile --snapshot artifacts/ynab --input {folder-of-exports}
+```
+
+`snapshot` reads the plan once — accounts, categories, payees, and every transaction since
+2024-01-01, a month at a time — into `snapshot.json`. Everything afterwards is answered from that
+file: a question about a balance costs no request, and the plan cannot change underneath an argument
+about it. (A token allows 200 requests an hour; the snapshot spends about forty and says so as it
+goes.) The `since_date` is always sent explicitly, because the API otherwise defaults to the last
+year and would silently hide the very months worth checking.
+
+`reconcile` pairs each export with the account it belongs to — by name, by the IBAN's last four
+digits, or by being the only account holding that balance; `--account "Girokonto · 9004=<id>"`
+decides a case by hand — then answers four questions per account:
+
+- does the plan hold the balance the export declares for its last day,
+- which bank rows the plan does not have,
+- which plan transactions the bank does not have — split into duplicates of a matched row, entries
+  that look like corrections (a payee that says `balance adjustment`, money pushed back into Ready to
+  Assign), and everything else,
+- **when** the two ledgers stopped agreeing: both balances are walked backwards from the day the
+  export was written, so a single difference becomes a date range to look at.
+
+```shell
+auto-ynab-csv ynab accounts  --snapshot artifacts/ynab     # names, types, balances, ids
+auto-ynab-csv ynab reconcile --snapshot artifacts/ynab --input ~/Downloads/ynab-25-oct
+auto-ynab-csv ynab apply     --plan artifacts/ynab/plan.json            # dry run: prints the plan
+auto-ynab-csv ynab apply     --plan artifacts/ynab/plan.json --apply    # does it, and journals it
+auto-ynab-csv ynab undo      --journal artifacts/ynab/journal.jsonl --plan-id <id> --apply
+```
+
+`reconcile` writes `reconcile.md` (what a person reads), `reconcile.json` (what a script reads) and
+`plan.json` — the smallest set of changes that makes the two agree: the rows only the bank has are
+added, the corrections holding a gap shut are removed, and the categories the plan's own history
+argues for are set. Nothing changes until `apply` is given `--apply`; every created transaction is
+`approved: false`, so it is visible in YNAB before it counts; and every action is written to a
+journal first, so `undo` can put back what `apply` took.
+
+Two things keep a repair from being an accident:
+
+- **an import id per movement** (`ayc-20261023-<hash>`), stable for the same account, day, amount and
+  words — applying the same plan twice finds its own work and says so instead of adding a copy;
+- **a review list that stops at 50**: categories are proposed from how the same payee was filed
+  before (at least three times, at least 80 % of them the same), and what is left is short enough to
+  decide rather than a wall.
+
+An account whose export carries no balance — n26's download has none — cannot be proven by a
+balance; the report prints `unknown` instead of inventing one.
+
+Money that moves between two of your own accounts is recognised from the account number the export
+prints for the other side: a row whose counterpart is one of the other exports is half of a
+transfer. When both halves are missing the plan adds **one** entry, as a transfer, and lets YNAB
+write the other leg — adding both would put the same money in twice. A movement the plan holds
+twice, because a re-import never paired it, is reported as a duplicate and removed with the rest
+(`--no-duplicates` leaves them where they are).
+
 ## Scripts
 
 The scripts wrap the commands above and pass extra arguments straight through. The `.sh` and

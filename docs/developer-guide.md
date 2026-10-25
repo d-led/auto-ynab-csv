@@ -7,14 +7,53 @@ is wrong — when the mail index throws itself away and reads the mailbox again.
 
 | Project | What it owns |
 | --- | --- |
-| `AutoYnabCsv` | The bank side: detectors, converters, the shared contracts, the CSV writer. Knows nothing about mail. |
+| `AutoYnabCsv` | The bank side: detectors, converters, the statements' header lines, the shared contracts, the CSV writer, the account labels. Knows nothing about mail or YNAB. |
 | `AutoYnabCsv.MailIndex` | The mail side: Apple Mail walk, extraction rules, correlation, enrichment, the SQLite index, the report site. |
-| `AutoYnabCsv.ConsoleApp` | The CLI (`convert`, `mail sync`, `mail scan`, `mail correlate`, `mail export`, `mail patterns`, `mail where`, `mail transfers`). |
+| `AutoYnabCsv.Ynab` | The plan side: milliunits and money, the API client, the snapshot, reconciliation, category proposals, the repair plan and its journal. Never reads mail. |
+| `AutoYnabCsv.ConsoleApp` | The CLI (`convert`, `mail …`, `ynab …`). |
 | `AutoYnabCsv.DesktopApp` | The Avalonia window: the same use cases, driven by hand. |
 | `AutoYnabCsv.Tests` | Everything above, tested through its public behaviour. |
 
-The direction of dependency is one way: `ConsoleApp` and `DesktopApp` → `MailIndex` → `AutoYnabCsv`.
-`MailIndex` never reaches into a UI, and `AutoYnabCsv` never reaches into mail.
+The direction of dependency is one way: `ConsoleApp` and `DesktopApp` → `MailIndex` → `AutoYnabCsv`,
+and `ConsoleApp` → `Ynab` → `AutoYnabCsv`. `MailIndex` never reaches into a UI and never into YNAB;
+`Ynab` never reaches into mail.
+
+## Money, and the two units it arrives in
+
+YNAB speaks milliunits — thousandths of a currency unit — and a person speaks amounts. Both are
+types in `AutoYnabCsv.Ynab/Contracts`: `Milliunits` wraps the `long` the API sends, `Money` wraps the
+decimal the export prints, and neither converts to the other implicitly. There is exactly one place
+where the two meet — `YnabApi`, at the edge — plus one seam on the bank side, `BankStatement`, where
+the export's plain decimal becomes `Money`. Adding an amount to a milliunit no longer compiles, and
+printing a `Milliunits` by mistake shows the struct's own name instead of a plausible number.
+
+The reconciliation itself is pure: `Reconciler.Of(snapshot, statements, overrides)` takes files and
+records and returns the whole argument — matches, holes, duplicates, corrections, the day the ledgers
+diverged, and what repairing them would do to each balance. That is why the decisions can be tested
+without a network, a token or a plan.
+
+## Nothing personal in the repository
+
+A snapshot holds every transaction of a real plan and a report holds the bank's own rows; both live
+in `artifacts/`, which is ignored. Anything checked in has to be invented: the fixtures use account
+numbers like `DE00000000000000000001`, made-up payees and the samples in `data/samples`. When a test
+needs a shape from a real export — the doubled minus, a masked card number, an n26 file name — take
+the shape and invent the content. A real IBAN, account id, payee or amount in a commit is a bug.
+
+## Applying a repair, and taking it back
+
+`RepairPlanBuilder` turns a reconciliation into the smallest set of changes and nothing else.
+`TransferFinder` is what makes "smallest" true for money moving between two of your own accounts:
+`OwnAccounts` knows the account numbers the exports are about, `TargetsOf` says which account each
+row moves money to, and `Pair` matches the two halves (same amount, days close, the printed account
+number deciding between equal amounts). A pair that is missing on both sides becomes one create with
+`TransferAccountId`, and YNAB writes the other leg.
+
+`PlanApplier` then applies them one at a time, appending a `JournalEntry` for each: a created
+transaction keeps its import id, a deleted one is kept whole before it goes. A refused action is
+reported and the rest still run, because half a repair that is written down is recoverable. Repeating
+the same plan is safe: a duplicate import id comes back as a 409 and is counted as `already there`,
+not as a problem. `undo` replays the journal backwards.
 
 ## Build, test, ship
 

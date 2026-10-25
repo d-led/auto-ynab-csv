@@ -2,6 +2,7 @@
 using System.Reflection;
 using System.Text;
 using AutoYnabCsv.App.Mail;
+using AutoYnabCsv.App.Ynab;
 using AutoYnabCsv.Common;
 using AutoYnabCsv.Converters;
 using AutoYnabCsv.Detectors;
@@ -22,6 +23,12 @@ internal static class Program
         // The heartbeat is a timer: if the run is interrupted, the line it was rewriting is closed
         // and the timer is let go, so the shell comes back instead of the last number staying put.
         Console.CancelKeyPress += (_, _) => ConsoleReportProgress.Flush();
+
+        if (args.Length > 0 && args[0] == "ynab")
+        {
+            Environment.ExitCode = YnabCli.Run(args.AsSpan(1));
+            return;
+        }
 
         if (args.Length > 0 && args[0] == "mail")
         {

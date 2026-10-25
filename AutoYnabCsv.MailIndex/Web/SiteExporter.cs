@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using AutoYnabCsv.Contracts;
 using AutoYnabCsv.MailIndex.Correlation;
 using AutoYnabCsv.MailIndex.Enrichment;
 using AutoYnabCsv.MailIndex.Facts;

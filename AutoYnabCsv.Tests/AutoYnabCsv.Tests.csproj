@@ -27,6 +27,7 @@
     <ItemGroup>
       <ProjectReference Include="..\AutoYnabCsv\AutoYnabCsv.csproj" />
       <ProjectReference Include="..\AutoYnabCsv.MailIndex\AutoYnabCsv.MailIndex.csproj" />
+      <ProjectReference Include="..\AutoYnabCsv.Ynab\AutoYnabCsv.Ynab.csproj" />
     </ItemGroup>
 
 </Project>

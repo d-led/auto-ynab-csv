@@ -1,3 +1,4 @@
+using AutoYnabCsv.Contracts;
 using AutoYnabCsv.MailIndex.Correlation;
 using AutoYnabCsv.MailIndex.Enrichment;
 

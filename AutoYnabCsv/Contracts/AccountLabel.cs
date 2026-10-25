@@ -1,10 +1,12 @@
 using System.Text.RegularExpressions;
 
-namespace AutoYnabCsv.MailIndex.Web;
+namespace AutoYnabCsv.Contracts;
 
 /// <summary>
 /// A short, readable name for an exported account, derived only from its file name:
 /// the date prefix and "Umsatzliste" go, a trailing account number stays as four digits.
+/// It is the name a transfer carries on the other side of the crossing, so it has to be stable
+/// and has to match how the account is named where the money lands.
 /// </summary>
 public static partial class AccountLabel
 {
@@ -31,6 +33,7 @@ public static partial class AccountLabel
         }
 
         return stem.StartsWith("n26", StringComparison.OrdinalIgnoreCase)
+            || stem.EndsWith("n26", StringComparison.OrdinalIgnoreCase)
             ? "n26"
             : Humanize(stem);
     }

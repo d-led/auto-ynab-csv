@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net10.0": {
+      "CsvHelper": {
+        "type": "Transitive",
+        "resolved": "33.1.0",
+        "contentHash": "kqfTOZGrn7NarNeXgjh86JcpTHUoeQDMB8t9NVa/ZtlSYiV1rxfRnQ49WaJsob4AiGrbK0XDzpyKkBwai4F8eg=="
+      },
+      "autoynabcsv": {
+        "type": "Project",
+        "dependencies": {
+          "CsvHelper": "[33.1.0, )"
+        }
+      }
+    }
+  }
+}
