@@ -25,6 +25,21 @@ public sealed record PlannedDelete(string AccountName, YnabTransaction Transacti
 public sealed record PlannedCategory(string TransactionId, string CategoryId, string CategoryName, string Why);
 
 /// <summary>
+/// A transaction that belongs to a different account than the one it was entered in. One PATCH moves
+/// it; deleting and recreating it would touch two accounts and lose its category and its memo.
+/// </summary>
+public sealed record PlannedMove(
+    string TransactionId,
+    string FromAccountId,
+    string ToAccountId,
+    string FromLabel,
+    string ToLabel,
+    DateOnly Date,
+    Money Amount,
+    string Description
+);
+
+/// <summary>
 /// What applying will do, in the order it says. A plan is a file a person can read before anything
 /// changes, and re-applying it is safe because every creation carries the same import id it had the
 /// first time.
@@ -35,12 +50,13 @@ public sealed record RepairPlan(
     IReadOnlyList<PlannedCreate> Creates,
     IReadOnlyList<PlannedDelete> Deletes,
     IReadOnlyList<PlannedCategory> Categories,
-    IReadOnlyList<string> Notes
+    IReadOnlyList<string> Notes,
+    IReadOnlyList<PlannedMove> Moves
 )
 {
-    public bool IsEmpty => Creates.Count == 0 && Deletes.Count == 0 && Categories.Count == 0;
+    public bool IsEmpty => Creates.Count == 0 && Deletes.Count == 0 && Categories.Count == 0 && Moves.Count == 0;
 
-    public int Total => Creates.Count + Deletes.Count + Categories.Count;
+    public int Total => Creates.Count + Deletes.Count + Categories.Count + Moves.Count;
 }
 
 /// <summary>
@@ -75,8 +91,38 @@ public static class RepairPlanBuilder
             Creates: creates,
             Deletes: deletes,
             Categories: categories,
-            Notes: Notes(reconciliation)
+            Notes: Notes(reconciliation),
+            Moves: repairBalances ? Moves(reconciliation) : []
         );
+    }
+
+    /// <summary>
+    /// A row the bank has in another account is moved there instead of being added here and removed
+    /// there: one change, and the category and memo the entry already carries survive it.
+    /// </summary>
+    private static IReadOnlyList<PlannedMove> Moves(Reconciliation reconciliation)
+    {
+        var idOfLabel = reconciliation.Accounts.ToDictionary(
+            account => account.Label,
+            account => account.Account.Id,
+            StringComparer.Ordinal
+        );
+
+        return
+        [
+            .. reconciliation.Reaccountings
+                .Where(move => idOfLabel.ContainsKey(move.FromLabel) && idOfLabel.ContainsKey(move.ToLabel))
+                .Select(move => new PlannedMove(
+                    TransactionId: move.Transaction.Id,
+                    FromAccountId: idOfLabel[move.FromLabel],
+                    ToAccountId: idOfLabel[move.ToLabel],
+                    FromLabel: move.FromLabel,
+                    ToLabel: move.ToLabel,
+                    Date: move.Transaction.Date,
+                    Amount: move.Transaction.Amount,
+                    Description: move.Transaction.Description))
+                .OrderBy(move => move.Date)
+        ];
     }
 
     /// <summary>
@@ -91,6 +137,9 @@ public static class RepairPlanBuilder
 
         var creates = new List<PlannedCreate>();
         var handled = new HashSet<BankRow>();
+
+        // A row that is only in another account is moved there, not created here.
+        var moved = reconciliation.Reaccountings.Select(move => move.Row).ToHashSet();
 
         foreach (var transfer in reconciliation.Transfers)
         {
@@ -108,7 +157,9 @@ public static class RepairPlanBuilder
         }
 
         creates.AddRange(
-            missing.Where(pair => !handled.Contains(pair.Row)).Select(pair => Create(pair.Account, pair.Row, transferAccountId: null))
+            missing
+                .Where(pair => !handled.Contains(pair.Row) && !moved.Contains(pair.Row))
+                .Select(pair => Create(pair.Account, pair.Row, transferAccountId: null))
         );
 
         return [.. creates.OrderBy(create => create.Date)];
@@ -165,6 +216,7 @@ public static class RepairPlanBuilder
         var unique = deletes
             .GroupBy(delete => delete.Transaction.Id, StringComparer.Ordinal)
             .Select(group => group.First())
+            .Where(delete => !reconciliation.Reaccountings.Any(move => move.Transaction.Id == delete.Transaction.Id))
             .ToList();
 
         // YNAB deletes both legs of a transfer with one delete, so an incoming leg is dropped when

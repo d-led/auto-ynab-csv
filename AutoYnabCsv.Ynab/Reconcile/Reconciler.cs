@@ -54,7 +54,8 @@ public sealed record Reconciliation(
     IReadOnlyList<AccountReconciliation> Accounts,
     IReadOnlyList<BankStatement> Unresolved,
     IReadOnlyList<Transfer> Transfers,
-    IReadOnlyList<TransferRepoint> Repoints
+    IReadOnlyList<TransferRepoint> Repoints,
+    IReadOnlyList<Reaccounting> Reaccountings
 )
 {
     public Money TotalRepairDelta => Money.Sum(Accounts.Select(account => account.RepairDelta));
@@ -93,17 +94,22 @@ public static class Reconciler
             .ToList();
         var transfers = TransferFinder.Pair(missing, own);
         var labelOfAccount = accounts.ToDictionary(account => account.Account.Id, account => account.Label, StringComparer.Ordinal);
+        var extras = accounts
+            .SelectMany(account => account.OnlyInPlan.Select(transaction => (Label: account.Label, Transaction: transaction)))
+            .ToList();
         var planOnly = TransferFinder.OrphanPairs(
             [.. accounts.SelectMany(account => account.OnlyInPlan)],
             accountId => labelOfAccount.GetValueOrDefault(accountId, accountId)
         );
+        var reaccountings = TransferFinder.Reaccountings(missing, extras);
 
         return new Reconciliation(
             Snapshot: snapshot,
             Accounts: accounts,
             Unresolved: mapping.Unresolved,
             Transfers: transfers,
-            Repoints: TransferFinder.Repoints(planOnly, transfers)
+            Repoints: TransferFinder.Repoints(planOnly, transfers),
+            Reaccountings: reaccountings
         );
     }
 

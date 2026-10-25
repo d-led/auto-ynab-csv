@@ -62,14 +62,36 @@ public class PlanApplierTest
     private Task<ApplyResult> Apply(RepairPlan plan, FakeGateway gateway) =>
         PlanApplier.ApplyAsync(plan, gateway, _journal);
 
-    private static RepairPlan Plan(PlannedCreate? create = null, PlannedDelete? delete = null) =>
+    [TestMethod]
+    public async Task AMovePutsTheTransactionInTheOtherAccountAndComesBackAgain()
+    {
+        var gateway = new FakeGateway();
+        var transaction = MatcherTest.Plan("t1", "2025-11-24", -500m, "Transfer : DKB Giro", transferAccountId: "acc-together");
+        gateway.Seed(transaction);
+
+        var result = await Apply(
+            Plan(move: new PlannedMove("t1", "acc", "acc-together", "DKB Giro", "GiroTogether", transaction.Date, transaction.Amount, "x")),
+            gateway
+        );
+
+        Assert.AreEqual(1, result.Moved);
+        Assert.IsTrue(result.Clean);
+        Assert.AreEqual("acc-together", gateway.Transactions.Single().AccountId);
+
+        await PlanApplier.UndoAsync(_journal, "plan-1", gateway);
+
+        Assert.AreEqual("acc", gateway.Transactions.Single().AccountId, "and back where it was");
+    }
+
+    private static RepairPlan Plan(PlannedCreate? create = null, PlannedDelete? delete = null, PlannedMove? move = null) =>
         new(
             PlanId: "plan-1",
             CreatedAt: new DateTimeOffset(2026, 10, 25, 12, 0, 0, TimeSpan.Zero),
             Creates: create is null ? [] : [create],
             Deletes: delete is null ? [] : [delete],
             Categories: [],
-            Notes: []
+            Notes: [],
+            Moves: move is null ? [] : [move]
         );
 
     private static PlannedCreate Create(string day, decimal amount) =>

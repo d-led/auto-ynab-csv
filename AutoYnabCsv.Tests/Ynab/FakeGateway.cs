@@ -84,6 +84,23 @@ internal sealed class FakeGateway : IYnabGateway
         CancellationToken cancellationToken = default
     ) => Task.CompletedTask;
 
+    public Task MoveAsync(
+        string planId,
+        string transactionId,
+        string accountId,
+        CancellationToken cancellationToken = default
+    )
+    {
+        var index = _transactions.FindIndex(transaction => transaction.Id == transactionId);
+        if (index < 0)
+        {
+            throw new YnabApiException(HttpStatusCode.NotFound, "no such transaction");
+        }
+
+        _transactions[index] = _transactions[index] with { AccountId = accountId };
+        return Task.CompletedTask;
+    }
+
     public Task AssignAsync(
         string planId,
         DateOnly month,

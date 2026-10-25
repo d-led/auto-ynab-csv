@@ -41,6 +41,14 @@ public interface IYnabGateway
         CancellationToken cancellationToken = default
     );
 
+    /// <summary>Puts a transaction into another account, keeping everything else about it.</summary>
+    Task MoveAsync(
+        string planId,
+        string transactionId,
+        string accountId,
+        CancellationToken cancellationToken = default
+    );
+
     Task AssignAsync(
         string planId,
         DateOnly month,

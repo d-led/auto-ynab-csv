@@ -182,6 +182,22 @@ public sealed class YnabApi : IYnabGateway
         );
     }
 
+    public async Task MoveAsync(
+        string planId,
+        string transactionId,
+        string accountId,
+        CancellationToken cancellationToken = default
+    )
+    {
+        var body = new { transaction = new { account_id = accountId } };
+        await SendAsync<TransactionData>(
+            $"plans/{planId}/transactions/{transactionId}",
+            HttpMethod.Patch,
+            body,
+            cancellationToken
+        );
+    }
+
     public async Task AssignAsync(
         string planId,
         DateOnly month,

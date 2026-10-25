@@ -169,7 +169,7 @@ public static class YnabCli
         Console.WriteLine();
         Console.WriteLine($"report: {markdownPath}");
         Console.WriteLine($"        {jsonPath}");
-        Console.WriteLine($"plan:   {planPath}  ({plan.Creates.Count} create(s), {plan.Deletes.Count} delete(s), {plan.Categories.Count} categor(ies))");
+        Console.WriteLine($"plan:   {planPath}  ({plan.Creates.Count} create(s), {plan.Deletes.Count} delete(s), {plan.Moves.Count} move(s), {plan.Categories.Count} categor(ies))");
         Console.WriteLine("        nothing was changed — review it, then run `ynab apply --plan <file> --apply`");
 
         return 0;
@@ -248,6 +248,13 @@ public static class YnabCli
             Console.WriteLine($"create  {create.Date:yyyy-MM-dd} {create.AccountName,-20} {create.Amount,10:0.00}  {create.PayeeName}");
         }
 
+        foreach (var move in plan.Moves)
+        {
+            Console.WriteLine(
+                $"move    {move.Date:yyyy-MM-dd} {move.Amount,10:0.00}  {move.FromLabel} -> {move.ToLabel}  {move.Description}"
+            );
+        }
+
         foreach (var delete in plan.Deletes)
         {
             Console.WriteLine(
@@ -269,7 +276,7 @@ public static class YnabCli
 
     private static void Report(ApplyResult result)
     {
-        Console.WriteLine($"created {result.Created}, deleted {result.Deleted}, categorized {result.Categorized}");
+        Console.WriteLine($"created {result.Created}, deleted {result.Deleted}, categorized {result.Categorized}, moved {result.Moved}");
 
         foreach (var problem in result.Problems)
         {

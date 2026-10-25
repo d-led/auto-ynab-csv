@@ -15,12 +15,14 @@ public sealed record JournalEntry(
     string Detail,
     string? TransactionId,
     PlannedCreate? Created,
-    YnabTransaction? Deleted
+    YnabTransaction? Deleted,
+    string? MovedFromAccountId = null
 )
 {
     public const string CreatedKind = "created";
     public const string DeletedKind = "deleted";
     public const string CategorizedKind = "categorized";
+    public const string MovedKind = "moved";
 }
 
 public static class Journal

@@ -250,4 +250,51 @@ public static class TransferFinder
     private static bool DifferentAccounts(Transfer bank, PlanTransferPair plan) =>
         !string.Equals(bank.FromLabel, plan.FromLabel, StringComparison.Ordinal)
         || !string.Equals(bank.ToLabel, plan.ToLabel, StringComparison.Ordinal);
+
+    /// <summary>
+    /// A plan row that sits in the wrong account: the bank has the same amount on the same day in
+    /// another of your accounts, and the plan has it in this one. Moving it is one change; deleting
+    /// and recreating it would touch two accounts and lose the category and the memo.
+    /// </summary>
+    public static IReadOnlyList<Reaccounting> Reaccountings(
+        IReadOnlyList<RowOf> missing,
+        IReadOnlyList<(string Label, YnabTransaction Transaction)> extras,
+        int dayWindow = DayWindow
+    )
+    {
+        var taken = new HashSet<string>(StringComparer.Ordinal);
+        var moves = new List<Reaccounting>();
+
+        foreach (var row in missing.OrderBy(candidate => candidate.Row.Date))
+        {
+            var match = extras
+                .Where(candidate => !taken.Contains(candidate.Transaction.Id))
+                .Where(candidate => candidate.Transaction.Amount == row.Row.Amount)
+                .Where(candidate => !string.Equals(candidate.Label, row.Label, StringComparison.Ordinal))
+                .Where(candidate => Math.Abs(candidate.Transaction.Date.DayNumber - row.Row.Date.DayNumber) <= dayWindow)
+                .OrderBy(candidate => Math.Abs(candidate.Transaction.Date.DayNumber - row.Row.Date.DayNumber))
+                .ThenByDescending(candidate => candidate.Transaction.IsTransfer)
+                .FirstOrDefault();
+
+            if (match.Transaction is null)
+            {
+                continue;
+            }
+
+            taken.Add(match.Transaction.Id);
+            moves.Add(
+                new Reaccounting(
+                    Transaction: match.Transaction,
+                    FromLabel: match.Label,
+                    ToLabel: row.Label,
+                    Row: row.Row
+                )
+            );
+        }
+
+        return moves;
+    }
 }
+
+/// <summary>A plan row that belongs to a different account than the one it was entered in.</summary>
+public sealed record Reaccounting(YnabTransaction Transaction, string FromLabel, string ToLabel, BankRow Row);

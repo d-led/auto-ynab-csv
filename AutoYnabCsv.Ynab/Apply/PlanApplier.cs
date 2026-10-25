@@ -8,6 +8,7 @@ public sealed record ApplyResult(
     int AlreadyThere,
     int Deleted,
     int Categorized,
+    int Moved,
     IReadOnlyList<string> Problems
 )
 {
@@ -33,6 +34,34 @@ public static class PlanApplier
         var alreadyThere = 0;
         var deleted = 0;
         var categorized = 0;
+        var moved = 0;
+
+        // A row that belongs in another account is a move, not a delete plus a create: it changes
+        // neither the money itself nor the category it was given.
+        foreach (var move in plan.Moves)
+        {
+            try
+            {
+                await gateway.MoveAsync(plan.PlanId, move.TransactionId, move.ToAccountId, cancellationToken);
+                moved++;
+                Journal.Append(
+                    journalPath,
+                    new JournalEntry(
+                        At: DateTimeOffset.UtcNow,
+                        Kind: JournalEntry.MovedKind,
+                        Detail: $"{move.FromLabel} -> {move.ToLabel}: {move.Date:yyyy-MM-dd} {move.Amount} {move.Description}",
+                        TransactionId: move.TransactionId,
+                        Created: null,
+                        Deleted: null,
+                        MovedFromAccountId: move.FromAccountId
+                    )
+                );
+            }
+            catch (YnabApiException exception)
+            {
+                problems.Add($"move {move.TransactionId}: {exception.Message}");
+            }
+        }
 
         foreach (var create in plan.Creates)
         {
@@ -117,7 +146,7 @@ public static class PlanApplier
             }
         }
 
-        return new ApplyResult(created, alreadyThere, deleted, categorized, problems);
+        return new ApplyResult(created, alreadyThere, deleted, categorized, moved, problems);
     }
 
     /// <summary>
@@ -134,6 +163,7 @@ public static class PlanApplier
         var problems = new List<string>();
         var created = 0;
         var deleted = 0;
+        var moved = 0;
 
         foreach (var entry in Journal.Read(journalPath).Reverse())
         {
@@ -163,6 +193,11 @@ public static class PlanApplier
                         );
                         created++;
                         break;
+
+                    case { Kind: JournalEntry.MovedKind, TransactionId: { } movedId, MovedFromAccountId: { } back }:
+                        await gateway.MoveAsync(planId, movedId, back, cancellationToken);
+                        moved++;
+                        break;
                 }
             }
             catch (YnabApiException exception)
@@ -171,6 +206,6 @@ public static class PlanApplier
             }
         }
 
-        return new ApplyResult(created, 0, deleted, 0, problems);
+        return new ApplyResult(created, 0, deleted, 0, moved, problems);
     }
 }

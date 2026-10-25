@@ -84,6 +84,31 @@ public class RepairPlanTransferTest
         Assert.AreEqual("w1", plan.Deletes[0].Transaction.Id);
     }
 
+    [TestMethod]
+    public void ARowTheBankHasInAnotherAccountIsMovedNotRecreated()
+    {
+        var inTheWrongAccount = Sample.T("x1", "2025-11-24", -500m, "Transfer : DKB Giro", transferAccountId: Giro.Id);
+        var asTheBankHasIt = Row(20, "2025-11-24", -500m, "Dmitry");
+        var move = new Reaccounting(inTheWrongAccount, "GiroTogether", "DKB Giro", asTheBankHasIt);
+
+        var plan = RepairPlanBuilder.From(
+            ReconciliationWith(
+                [
+                    AccountReconciliationOf(Giro, missing: asTheBankHasIt),
+                    AccountReconciliationOf(Together, extra: inTheWrongAccount),
+                ],
+                reaccountings: [move]
+            ),
+            []
+        );
+
+        Assert.AreEqual(1, plan.Moves.Count);
+        Assert.AreEqual(0, plan.Creates.Count, "the row is not created a second time");
+        Assert.AreEqual(0, plan.Deletes.Count, "and not deleted from where it wrongly sits");
+        Assert.AreEqual("acc-giro", plan.Moves[0].ToAccountId);
+        Assert.AreEqual("acc-together", plan.Moves[0].FromAccountId);
+    }
+
     private static YnabAccount Account(string id, string name) =>
         new(id, name, "checking", OnBudget: true, Closed: false, Money.Zero, Money.Zero, Money.Zero);
 
@@ -115,13 +140,15 @@ public class RepairPlanTransferTest
     private static Reconciliation ReconciliationWith(
         IReadOnlyList<AccountReconciliation> accounts,
         IReadOnlyList<Transfer>? transfers = null,
-        IReadOnlyList<TransferRepoint>? repoints = null
+        IReadOnlyList<TransferRepoint>? repoints = null,
+        IReadOnlyList<Reaccounting>? reaccountings = null
     ) =>
         new(
             Snapshot: Sample.Snapshot(),
             Accounts: accounts,
             Unresolved: [],
             Transfers: transfers ?? [],
-            Repoints: repoints ?? []
+            Repoints: repoints ?? [],
+            Reaccountings: reaccountings ?? []
         );
 }
