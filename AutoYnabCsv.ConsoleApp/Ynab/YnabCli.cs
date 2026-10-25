@@ -256,9 +256,12 @@ public static class YnabCli
 
         using var http = new HttpClient();
         var throughTheApi = options.Has("create") ? plan : plan with { Creates = [] };
+
+        // A handful of rows is worth sitting out the hour's spread for; a long repair is not, because
+        // every one of its waits would add up to hours. The pace is announced either way.
         var result = await PlanApplier.ApplyAsync(
             throughTheApi,
-            Gateway(http),
+            Gateway(http, waitWorthTaking: plan.Total <= 10 ? TimeSpan.FromMinutes(5) : null),
             options.Or("journal", "artifacts/ynab/journal.jsonl")
         );
         Report(result);
