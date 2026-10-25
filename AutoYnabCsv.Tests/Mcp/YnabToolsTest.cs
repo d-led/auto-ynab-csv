@@ -42,6 +42,57 @@ public class YnabToolsTest
     }
 
     [TestMethod]
+    public void AnExportWithoutItsPeriodIsNotRecognisedAtAll()
+    {
+        var folder = TempFolder();
+        var bare = string.Join(
+            '\n',
+            ExportFixture
+                .DkbGiro()
+                .Split('\n')
+                .Where(line => !line.StartsWith("\"Zeitraum:\"", StringComparison.Ordinal))
+        );
+        ExportFixture.Write(folder, "19-10-2026_Umsatzliste_Girokonto_DE00000000000000000002.csv", bare);
+
+        StringAssert.Contains(YnabTools.Exports(folder), "Nothing was read", "an export the reader cannot date is not half-read");
+    }
+
+    [TestMethod]
+    public void TheReportIsAnsweredOfflineFromASnapshotAndTheExports()
+    {
+        var folder = TempFolder();
+        var snapshot = TempFolder();
+        SnapshotStore.Save(Sample.Snapshot(), snapshot);
+        ExportFixture.Write(folder, "19-10-2026_Umsatzliste_Girokonto_DE00000000000000000002.csv", ExportFixture.DkbGiro());
+
+        var answer = YnabTools.Reconcile(
+            snapshot,
+            folder,
+            accounts: ["Girokonto · 0002=acc-giro"],
+            expectedBalances: ["Girokonto · 0002=1.234,50"]
+        );
+
+        StringAssert.Contains(answer, "1 account(s) paired with an export");
+        StringAssert.Contains(answer, "1234.50", "the balance that was given by hand");
+        StringAssert.Contains(answer, "Girokonto · 0002", "the account the export was mapped to");
+    }
+
+    [TestMethod]
+    public void ABalanceThatIsNotAnAmountSaysWhichOne()
+    {
+        var folder = TempFolder();
+        var snapshot = TempFolder();
+        SnapshotStore.Save(Sample.Snapshot(), snapshot);
+        ExportFixture.Write(folder, "19-10-2026_Umsatzliste_Girokonto_DE00000000000000000002.csv", ExportFixture.DkbGiro());
+
+        var failure = Assert.ThrowsExactly<ArgumentException>(() =>
+            YnabTools.Reconcile(snapshot, folder, expectedBalances: ["Girokonto · 0002=not money"])
+        );
+
+        StringAssert.Contains(failure.Message, "not money");
+    }
+
+    [TestMethod]
     public void APlanFileIsAnsweredAsTables()
     {
         var path = Path.Combine(TempFolder(), "plan.json");

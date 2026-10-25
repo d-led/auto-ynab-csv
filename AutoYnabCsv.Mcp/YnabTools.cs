@@ -83,14 +83,9 @@ public static class YnabTools
         return text.ToString();
     }
 
+    /// <summary>A recognised export prints its period; an unreadable one says so instead of guessing.</summary>
     private static string Period(ExportStatement statement) =>
-        (statement.PeriodFrom, statement.PeriodTo) switch
-        {
-            (null, null) => "unknown",
-            ({ } from, null) => $"from {from:yyyy-MM-dd}",
-            (null, { } to) => $"to {to:yyyy-MM-dd}",
-            ({ } from, { } to) => $"{from:yyyy-MM-dd} … {to:yyyy-MM-dd}",
-        };
+        $"{statement.PeriodFrom?.ToString("yyyy-MM-dd") ?? "unknown"} … {statement.PeriodTo?.ToString("yyyy-MM-dd") ?? "unknown"}";
 
     [McpServerTool(Name = "ynab_reconcile")]
     [Description(

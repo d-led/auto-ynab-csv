@@ -35,6 +35,20 @@ public class PlanSummaryTest
     }
 
     [TestMethod]
+    public void ThePlansOwnNotesAreReadBeforeTheTables()
+    {
+        var markdown = PlanSummary.Markdown(
+            Plan(Deletes: [Delete(-10m)]) with { Notes = ["nine rows were left alone because they are ours", "and one because the export is silent"] }
+        );
+
+        StringAssert.Contains(markdown, "- nine rows were left alone because they are ours");
+        Assert.IsTrue(
+            markdown.IndexOf("nine rows", StringComparison.Ordinal) < markdown.IndexOf("## Remove", StringComparison.Ordinal),
+            "what the plan could not decide comes before what it did"
+        );
+    }
+
+    [TestMethod]
     public void ACellCannotBreakTheTable()
     {
         var markdown = PlanSummary.Markdown(Plan(Deletes: [Delete(-10m, memo: "two | pipes\nand a newline")]));

@@ -39,8 +39,6 @@ public sealed record CategorizationRule(RuleMatch Match, string CategoryId, stri
 public sealed record RuleProposal(YnabTransaction Transaction, CategorizationRule Rule)
 {
     public bool Changes => Transaction.CategoryId != Rule.CategoryId;
-
-    public string Why => $"rule: {Rule.CategoryName}";
 }
 
 /// <summary>
