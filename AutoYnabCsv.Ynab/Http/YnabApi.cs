@@ -122,9 +122,9 @@ public sealed class YnabApi : IYnabGateway
                 // sending a payee name as well would fight that.
                 payee_name = create.TransferAccountId is null ? create.PayeeName : null,
                 transfer_account_id = create.TransferAccountId,
-                memo = create.Memo,
+                memo = Capped(create.Memo),
                 category_id = create.CategoryId,
-                cleared = true,
+                cleared = "cleared",
                 approved = false,
                 import_id = create.ImportId,
             },
@@ -247,6 +247,10 @@ public sealed class YnabApi : IYnabGateway
     /// <summary>YNAB says <c>cleared</c>, <c>uncleared</c> or <c>reconciled</c> — never true or false.</summary>
     private static bool IsCleared(string? state) =>
         !string.Equals(state, "uncleared", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>A DK B statement line can run past the API's 500 characters; the end is cut, not lost.</summary>
+    private static string Capped(string memo, int maxLength = 500) =>
+        memo.Length <= maxLength ? memo : string.Concat(memo.AsSpan(0, maxLength - 1), "…");
 
     private static async Task<string> ErrorDetail(HttpResponseMessage response, CancellationToken cancellationToken)
     {
