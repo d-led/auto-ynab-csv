@@ -74,7 +74,8 @@ public class ReconcileReportTest
                 )
             ],
             Unresolved: [],
-            Transfers: []
+            Transfers: [],
+            Repoints: []
         );
     }
 }

@@ -102,6 +102,79 @@ public class TransferFinderTest
     private static string Spaced(string iban) =>
         $"{iban[..4]} {iban[4..8]} {iban[8..12]} {iban[12..16]} {iban[16..]}";
 
+    [TestMethod]
+    public void TwoLegsThatNameEachOtherAreOneMovementOnlyThePlanHas()
+    {
+        var pairs = TransferFinder.OrphanPairs(
+            [
+                Plan("w1", -500m, "acc-giro", "acc-together"),
+                Plan("w2", 500m, "acc-together", "acc-giro"),
+            ],
+            accountId => accountId
+        );
+
+        Assert.AreEqual(1, pairs.Count);
+        Assert.AreEqual("w1", pairs[0].Outgoing.Id);
+        Assert.AreEqual("acc-together", pairs[0].ToLabel);
+    }
+
+    [TestMethod]
+    public void ALegWithoutItsPartnerAtTheOtherEndIsNotAPair()
+    {
+        var pairs = TransferFinder.OrphanPairs([Plan("w1", -500m, "acc-giro", "acc-together")], accountId => accountId);
+
+        Assert.AreEqual(0, pairs.Count, "money left and arrived nowhere is a different problem");
+    }
+
+    [TestMethod]
+    public void ATransferBetweenTheAccountsTheBankNamesIsNotAMismatch()
+    {
+        var wrong = new PlanTransferPair(
+            Plan("w1", -500m, "Giro", "Together"),
+            Plan("w2", 500m, "Together", "Giro"),
+            "Giro",
+            "Together"
+        );
+        var same = new Transfer(Row(0, "2026-01-14", -500m, "x"), Row(1, "2026-01-14", 500m, "x"), "Giro", "Together", 0, true);
+
+        Assert.AreEqual(0, TransferFinder.Repoints([wrong], [same]).Count);
+    }
+
+    [TestMethod]
+    public void ATransferTheBankMadeElsewhereIsProposedAsItsReplacement()
+    {
+        var wrong = new PlanTransferPair(
+            Plan("w1", -500m, "Giro", "Together"),
+            Plan("w2", 500m, "Together", "Giro"),
+            "Giro",
+            "Together"
+        );
+        var real = new Transfer(Row(0, "2026-01-14", -500m, "x"), Row(1, "2026-01-14", 500m, "x"), "Giro", "n26", 0, true);
+
+        var repoints = TransferFinder.Repoints([wrong], [real]);
+
+        Assert.AreEqual(1, repoints.Count);
+        Assert.AreEqual("n26", repoints[0].Right.ToLabel);
+    }
+
+    private static YnabTransaction Plan(string id, decimal amount, string accountId, string? transferAccountId) =>
+        new(
+            Id: id,
+            Date: new DateOnly(2026, 1, 14),
+            Amount: amount,
+            AccountId: accountId,
+            AccountName: accountId,
+            PayeeId: null,
+            PayeeName: "Transfer",
+            CategoryId: null,
+            CategoryName: null,
+            Memo: null,
+            Cleared: true,
+            Approved: true,
+            TransferAccountId: transferAccountId,
+            ImportId: null
+        );
+
     private static BankStatement Statement(string label, string iban) =>
         new(
             "export.csv",

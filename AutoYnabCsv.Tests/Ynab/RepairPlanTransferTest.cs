@@ -59,6 +59,31 @@ public class RepairPlanTransferTest
         Assert.AreEqual(0, RepairPlanBuilder.From(reconciliation, [], deleteDuplicates: false).Deletes.Count);
     }
 
+    [TestMethod]
+    public void ATransferPointingAtTheWrongAccountIsReplacedNotKept()
+    {
+        var wrongOut = Sample.T("w1", "2025-10-29", -500m, "Transfer : GiroTogether", transferAccountId: Together.Id);
+        var wrongIn = Sample.T("w2", "2025-10-29", 500m, "Transfer : DKB Giro", transferAccountId: Giro.Id);
+        var realOut = Row(10, "2025-10-29", -500m, "Dmitry");
+        var realIn = Row(11, "2025-10-29", 500m, "Dmitry");
+        var n26 = Account("acc-n26", "n26");
+        var real = new Transfer(realOut, realIn, "DKB Giro", "n26", 0, ConfirmedByAccountNumber: true);
+
+        var plan = RepairPlanBuilder.From(
+            ReconciliationWith(
+                [AccountReconciliationOf(Giro, missing: realOut, extra: wrongOut), AccountReconciliationOf(n26, missing: realIn, extra: wrongIn)],
+                [real],
+                [new TransferRepoint(new PlanTransferPair(wrongOut, wrongIn, "DKB Giro", "GiroTogether"), real)]
+            ),
+            []
+        );
+
+        Assert.AreEqual(1, plan.Creates.Count, "the real transfer, once");
+        Assert.AreEqual("acc-n26", plan.Creates[0].TransferAccountId);
+        Assert.AreEqual(1, plan.Deletes.Count, "and the pair the plan invented goes with one delete");
+        Assert.AreEqual("w1", plan.Deletes[0].Transaction.Id);
+    }
+
     private static YnabAccount Account(string id, string name) =>
         new(id, name, "checking", OnBudget: true, Closed: false, Money.Zero, Money.Zero, Money.Zero);
 
@@ -68,7 +93,8 @@ public class RepairPlanTransferTest
     private static AccountReconciliation AccountReconciliationOf(
         YnabAccount account,
         BankRow? missing = null,
-        DuplicateOf? duplicate = null
+        DuplicateOf? duplicate = null,
+        YnabTransaction? extra = null
     ) =>
         new(
             Account: account,
@@ -78,7 +104,7 @@ public class RepairPlanTransferTest
             PlanBalanceAtCutoff: Money.Zero,
             Matches: [],
             MissingInPlan: missing is null ? [] : [missing],
-            OnlyInPlan: [],
+            OnlyInPlan: extra is null ? [] : [extra],
             Duplicates: duplicate is null ? [] : [duplicate],
             Adjustments: [],
             ZeroAmountRows: [],
@@ -88,6 +114,14 @@ public class RepairPlanTransferTest
 
     private static Reconciliation ReconciliationWith(
         IReadOnlyList<AccountReconciliation> accounts,
-        IReadOnlyList<Transfer>? transfers = null
-    ) => new(Snapshot: Sample.Snapshot(), Accounts: accounts, Unresolved: [], Transfers: transfers ?? []);
+        IReadOnlyList<Transfer>? transfers = null,
+        IReadOnlyList<TransferRepoint>? repoints = null
+    ) =>
+        new(
+            Snapshot: Sample.Snapshot(),
+            Accounts: accounts,
+            Unresolved: [],
+            Transfers: transfers ?? [],
+            Repoints: repoints ?? []
+        );
 }

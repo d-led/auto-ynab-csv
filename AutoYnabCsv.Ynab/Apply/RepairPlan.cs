@@ -55,11 +55,12 @@ public static class RepairPlanBuilder
         IReadOnlyList<Categorize.CategoryProposal> proposals,
         bool repairBalances = true,
         bool categorize = true,
-        bool deleteDuplicates = true
+        bool deleteDuplicates = true,
+        bool deleteExtras = true
     )
     {
         IReadOnlyList<PlannedCreate> creates = repairBalances ? Creates(reconciliation) : [];
-        IReadOnlyList<PlannedDelete> deletes = repairBalances ? Deletes(reconciliation, deleteDuplicates) : [];
+        IReadOnlyList<PlannedDelete> deletes = repairBalances ? Deletes(reconciliation, deleteDuplicates, deleteExtras) : [];
         IReadOnlyList<PlannedCategory> categories = categorize
             ? [.. proposals.Where(proposal => proposal.IsConfident).Select(proposal => new PlannedCategory(
                 TransactionId: proposal.Transaction.Id,
@@ -126,12 +127,29 @@ public static class RepairPlanBuilder
             TransferAccountId: transferAccountId
         );
 
-    private static IReadOnlyList<PlannedDelete> Deletes(Reconciliation reconciliation, bool deleteDuplicates)
+    private static IReadOnlyList<PlannedDelete> Deletes(
+        Reconciliation reconciliation,
+        bool deleteDuplicates,
+        bool deleteExtras
+    )
     {
-        var deletes = new List<PlannedDelete>(
-            reconciliation.Accounts.SelectMany(account => account.Adjustments.Select(adjustment =>
-                new PlannedDelete(account.Account.Name, adjustment.Transaction, adjustment.Why)))
-        );
+        var deletes = new List<PlannedDelete>();
+
+        // A correction is an extra like any other; it is only named better above.
+        if (deleteExtras)
+        {
+            deletes.AddRange(
+                reconciliation.Accounts.SelectMany(account => account.OnlyInPlan.Select(transaction =>
+                    new PlannedDelete(account.Account.Name, transaction, "the export does not have this row")))
+            );
+        }
+        else
+        {
+            deletes.AddRange(
+                reconciliation.Accounts.SelectMany(account => account.Adjustments.Select(adjustment =>
+                    new PlannedDelete(account.Account.Name, adjustment.Transaction, adjustment.Why)))
+            );
+        }
 
         if (deleteDuplicates)
         {
@@ -144,7 +162,27 @@ public static class RepairPlanBuilder
             );
         }
 
-        return [.. deletes.OrderBy(delete => delete.Transaction.Date)];
+        var unique = deletes
+            .GroupBy(delete => delete.Transaction.Id, StringComparer.Ordinal)
+            .Select(group => group.First())
+            .ToList();
+
+        // YNAB deletes both legs of a transfer with one delete, so an incoming leg is dropped when
+        // its outgoing partner is being deleted too: the second call would find nothing.
+        var outgoing = unique
+            .Where(delete => delete.Transaction.IsTransfer && delete.Transaction.Amount.IsNegative)
+            .Select(delete => (delete.Transaction.Date, Amount: delete.Transaction.Amount.Abs()))
+            .ToHashSet();
+
+        return
+        [
+            .. unique
+                .Where(delete =>
+                    !delete.Transaction.IsTransfer
+                    || delete.Transaction.Amount.IsNegative
+                    || !outgoing.Contains((delete.Transaction.Date, delete.Transaction.Amount.Abs())))
+                .OrderBy(delete => delete.Transaction.Date)
+        ];
     }
 
     private static IReadOnlyList<string> Notes(Reconciliation reconciliation)

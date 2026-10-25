@@ -82,6 +82,11 @@ public static class PlanApplier
                     )
                 );
             }
+            catch (YnabApiException exception) when (exception.Status == System.Net.HttpStatusCode.NotFound)
+            {
+                // Already gone — the other leg of a transfer takes both with it. Nothing to report.
+                alreadyThere++;
+            }
             catch (YnabApiException exception)
             {
                 problems.Add($"delete {delete.Transaction.Id}: {exception.Message}");

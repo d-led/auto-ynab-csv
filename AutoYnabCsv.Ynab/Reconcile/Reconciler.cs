@@ -53,7 +53,8 @@ public sealed record Reconciliation(
     YnabSnapshot Snapshot,
     IReadOnlyList<AccountReconciliation> Accounts,
     IReadOnlyList<BankStatement> Unresolved,
-    IReadOnlyList<Transfer> Transfers
+    IReadOnlyList<Transfer> Transfers,
+    IReadOnlyList<TransferRepoint> Repoints
 )
 {
     public Money TotalRepairDelta => Money.Sum(Accounts.Select(account => account.RepairDelta));
@@ -90,12 +91,19 @@ public static class Reconciler
         var missing = accounts
             .SelectMany(account => account.MissingInPlan.Select(row => new RowOf(account.Label, row)))
             .ToList();
+        var transfers = TransferFinder.Pair(missing, own);
+        var labelOfAccount = accounts.ToDictionary(account => account.Account.Id, account => account.Label, StringComparer.Ordinal);
+        var planOnly = TransferFinder.OrphanPairs(
+            [.. accounts.SelectMany(account => account.OnlyInPlan)],
+            accountId => labelOfAccount.GetValueOrDefault(accountId, accountId)
+        );
 
         return new Reconciliation(
             Snapshot: snapshot,
             Accounts: accounts,
             Unresolved: mapping.Unresolved,
-            Transfers: TransferFinder.Pair(missing, own)
+            Transfers: transfers,
+            Repoints: TransferFinder.Repoints(planOnly, transfers)
         );
     }
 

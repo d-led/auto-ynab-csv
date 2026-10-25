@@ -78,6 +78,23 @@ public sealed record Transfer(
 );
 
 /// <summary>
+/// The plan's own two legs of a transfer that the export does not show at all: two entries that name
+/// each other, opposite amounts on the same day. Money that left one account and arrived nowhere.
+/// </summary>
+public sealed record PlanTransferPair(
+    YnabTransaction Outgoing,
+    YnabTransaction Incoming,
+    string FromLabel,
+    string ToLabel
+);
+
+/// <summary>
+/// A transfer the plan recorded between one pair of accounts and the bank made between another.
+/// Replacing the wrong pair with the right transfer is what closes two accounts at once.
+/// </summary>
+public sealed record TransferRepoint(PlanTransferPair Wrong, Transfer Right);
+
+/// <summary>
 /// Finds the two halves of a transfer. The amount has to be the same and the days close, because a
 /// card settles days after the purchase and a weekend shifts a posting; where the exports print the
 /// other side's account number, that decides which of several equal amounts is the real partner.
@@ -146,4 +163,91 @@ public static class TransferFinder
     private static bool Confirmed(RowOf outgoing, RowOf candidate, OwnAccounts own) =>
         own.LabelOf(outgoing.Row.CounterpartyIban) is { } label
         && string.Equals(label, candidate.Label, StringComparison.Ordinal);
+
+    /// <summary>
+    /// The plan's transfers the export does not know about, paired leg with leg. The two halves need
+    /// not name each other — a transfer edited by hand can name anything — so what pairs them is that
+    /// both are transfers, the amounts are equal and opposite, the days are close and the accounts
+    /// are different.
+    /// </summary>
+    public static IReadOnlyList<PlanTransferPair> OrphanPairs(
+        IReadOnlyList<YnabTransaction> onlyInPlan,
+        Func<string, string> labelOfAccount,
+        int dayWindow = DayWindow
+    )
+    {
+        var transfers = onlyInPlan.Where(candidate => candidate.IsTransfer).ToList();
+        var taken = new HashSet<string>(StringComparer.Ordinal);
+        var pairs = new List<PlanTransferPair>();
+
+        foreach (var outgoing in transfers.Where(candidate => candidate.Amount.IsNegative).OrderBy(candidate => candidate.Date))
+        {
+            var incoming = transfers
+                .Where(candidate => !taken.Contains(candidate.Id))
+                .Where(candidate => candidate.Id != outgoing.Id)
+                .Where(candidate => candidate.Amount == -outgoing.Amount)
+                .Where(candidate => !string.Equals(candidate.AccountId, outgoing.AccountId, StringComparison.Ordinal))
+                .Where(candidate => Math.Abs(candidate.Date.DayNumber - outgoing.Date.DayNumber) <= dayWindow)
+                .OrderBy(candidate => Math.Abs(candidate.Date.DayNumber - outgoing.Date.DayNumber))
+                .FirstOrDefault();
+
+            if (incoming is null)
+            {
+                continue;
+            }
+
+            taken.Add(outgoing.Id);
+            taken.Add(incoming.Id);
+
+            pairs.Add(
+                new PlanTransferPair(
+                    Outgoing: outgoing,
+                    Incoming: incoming,
+                    FromLabel: labelOfAccount(outgoing.AccountId),
+                    ToLabel: labelOfAccount(incoming.AccountId)
+                )
+            );
+        }
+
+        return pairs;
+    }
+
+    /// <summary>
+    /// A transfer only the plan has, next to one only the bank has, with the same amount on a day
+    /// close by, between different accounts: the plan recorded the movement against the wrong
+    /// account. One that matches account for account is not a mismatch and is left alone.
+    /// </summary>
+    public static IReadOnlyList<TransferRepoint> Repoints(
+        IReadOnlyList<PlanTransferPair> onlyInPlan,
+        IReadOnlyList<Transfer> onlyInBank,
+        int dayWindow = DayWindow
+    )
+    {
+        var taken = new HashSet<BankRow>();
+        var repoints = new List<TransferRepoint>();
+
+        foreach (var wrong in onlyInPlan)
+        {
+            var right = onlyInBank.FirstOrDefault(candidate =>
+                !taken.Contains(candidate.Outgoing)
+                && candidate.Outgoing.Amount == wrong.Outgoing.Amount
+                && Math.Abs(candidate.Outgoing.Date.DayNumber - wrong.Outgoing.Date.DayNumber) <= dayWindow
+                && DifferentAccounts(candidate, wrong)
+            );
+
+            if (right is null)
+            {
+                continue;
+            }
+
+            taken.Add(right.Outgoing);
+            repoints.Add(new TransferRepoint(wrong, right));
+        }
+
+        return repoints;
+    }
+
+    private static bool DifferentAccounts(Transfer bank, PlanTransferPair plan) =>
+        !string.Equals(bank.FromLabel, plan.FromLabel, StringComparison.Ordinal)
+        || !string.Equals(bank.ToLabel, plan.ToLabel, StringComparison.Ordinal);
 }

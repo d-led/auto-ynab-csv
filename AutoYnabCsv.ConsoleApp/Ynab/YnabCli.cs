@@ -159,7 +159,8 @@ public static class YnabCli
             proposals,
             repairBalances: !options.Has("no-balance-repair"),
             categorize: !options.Has("no-categorize"),
-            deleteDuplicates: !options.Has("no-duplicates")
+            deleteDuplicates: !options.Has("no-duplicates"),
+            deleteExtras: !options.Has("keep-extras")
         );
         var planPath = PlanStore.Save(plan, Path.Combine(outDirectory, PlanStore.FileName));
 
@@ -378,6 +379,7 @@ public static class YnabCli
         Console.WriteLine("  --no-balance-repair  Leave the ledger alone; only report.");
         Console.WriteLine("  --no-categorize      Do not carry the category proposals into the plan.");
         Console.WriteLine("  --no-duplicates      Leave duplicated transactions where they are.");
+        Console.WriteLine("  --keep-extras        Leave plan rows the export does not have; only report.");
         Console.WriteLine();
         Console.WriteLine($"Reads the access token from ${TokenVariable}.");
     }
