@@ -16,8 +16,11 @@ public sealed class YnabApi : IYnabGateway
 {
     public const string BaseUrl = "https://api.ynab.com/v1/";
 
-    /// <summary>An access token is allowed 200 requests an hour; a 429 is waited out once.</summary>
-    private static readonly TimeSpan RateLimitPause = TimeSpan.FromSeconds(60);
+    /// <summary>
+    /// A wait this short is cheaper than a failed command; an hour of sitting still is not, and is
+    /// refused with the time instead.
+    /// </summary>
+    private static readonly TimeSpan WaitWorthTaking = TimeSpan.FromSeconds(60);
 
     private static readonly JsonSerializerOptions Json = new()
     {
@@ -26,10 +29,14 @@ public sealed class YnabApi : IYnabGateway
     };
 
     private readonly HttpClient _http;
+    private readonly RequestBudget _budget;
+    private readonly Action<string>? _say;
 
-    public YnabApi(HttpClient http, string accessToken)
+    public YnabApi(HttpClient http, string accessToken, RequestBudget? budget = null, Action<string>? say = null)
     {
         _http = http;
+        _budget = budget ?? new RequestBudget();
+        _say = say;
         _http.BaseAddress ??= new Uri(BaseUrl);
         _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
     }
@@ -218,30 +225,34 @@ public sealed class YnabApi : IYnabGateway
     private async Task<T> SendAsync<T>(string path, HttpMethod method, object? body, CancellationToken cancellationToken)
         where T : class
     {
-        for (var attempt = 0; ; attempt++)
+        // Not a loop: the hour is counted here, so a refusal is the end of the hour, not a moment.
+        await _budget.AcquireAsync(
+            WaitWorthTaking,
+            delay => _say?.Invoke($"the hour's {RequestBudget.PerHour} requests are nearly spent; waiting {delay.TotalSeconds:0}s"),
+            cancellationToken
+        );
+
+        using var request = new HttpRequestMessage(method, path);
+        if (body is not null)
         {
-            using var request = new HttpRequestMessage(method, path);
-            if (body is not null)
-            {
-                request.Content = JsonContent.Create(body, options: Json);
-            }
-
-            using var response = await _http.SendAsync(request, cancellationToken);
-
-            if (response.StatusCode == HttpStatusCode.TooManyRequests && attempt == 0)
-            {
-                await Task.Delay(RateLimitPause, cancellationToken);
-                continue;
-            }
-
-            if (!response.IsSuccessStatusCode)
-            {
-                throw new YnabApiException(response.StatusCode, await ErrorDetail(response, cancellationToken));
-            }
-
-            var envelope = await response.Content.ReadFromJsonAsync<Envelope<T>>(Json, cancellationToken);
-            return envelope?.Data ?? throw new YnabApiException(response.StatusCode, "the answer had no data");
+            request.Content = JsonContent.Create(body, options: Json);
         }
+
+        using var response = await _http.SendAsync(request, cancellationToken);
+
+        if (response.StatusCode == HttpStatusCode.TooManyRequests)
+        {
+            _budget.MarkHourSpent();
+            throw new RequestBudgetExhaustedException(_budget.DelayBeforeNext(), await ErrorDetail(response, cancellationToken));
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new YnabApiException(response.StatusCode, await ErrorDetail(response, cancellationToken));
+        }
+
+        var envelope = await response.Content.ReadFromJsonAsync<Envelope<T>>(Json, cancellationToken);
+        return envelope?.Data ?? throw new YnabApiException(response.StatusCode, "the answer had no data");
     }
 
     /// <summary>YNAB says <c>cleared</c>, <c>uncleared</c> or <c>reconciled</c> — never true or false.</summary>

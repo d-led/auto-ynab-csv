@@ -1,3 +1,4 @@
+using AutoYnabCsv.MailIndex;
 using AutoYnabCsv.Statements;
 using AutoYnabCsv.Ynab;
 using AutoYnabCsv.Ynab.Apply;
@@ -58,6 +59,11 @@ public static class YnabCli
             Console.Error.WriteLine(exception.Message);
             return 2;
         }
+        catch (RequestBudgetExhaustedException exception)
+        {
+            Console.Error.WriteLine(exception.Message);
+            return 3;
+        }
         catch (SnapshotUnreadableException exception)
         {
             Console.Error.WriteLine(exception.Message);
@@ -96,7 +102,7 @@ public static class YnabCli
     private static async Task<int> SnapshotAsync(YnabOptions options)
     {
         using var http = new HttpClient();
-        var gateway = Gateway(http);
+        var gateway = Gateway(http, Console.WriteLine);
         var planId = await ChosenPlanAsync(gateway, options);
 
         var since = DateOnly.TryParse(options.Or("since", DefaultSince), out var day)
@@ -286,10 +292,17 @@ public static class YnabCli
 
     private static string? Token() => Environment.GetEnvironmentVariable(TokenVariable);
 
-    private static IYnabGateway Gateway(HttpClient http) =>
+    private static IYnabGateway Gateway(HttpClient http, Action<string>? say = null) =>
         string.IsNullOrWhiteSpace(Token())
             ? throw new MissingTokenException(TokenVariable)
-            : new YnabApi(http, Token()!);
+            : new YnabApi(http, Token()!, Requests(), say: say);
+
+    /// <summary>
+    /// The hour is counted in one file, so two commands a minute apart spend one allowance of 200
+    /// instead of four hundred and a refusal neither of them could see coming.
+    /// </summary>
+    private static RequestBudget Requests() =>
+        new(ledgerPath: Path.Combine(AppDirectories.DataDirectory(), "ynab-requests.txt"));
 
     private static async Task<string> ChosenPlanAsync(IYnabGateway gateway, YnabOptions options)
     {

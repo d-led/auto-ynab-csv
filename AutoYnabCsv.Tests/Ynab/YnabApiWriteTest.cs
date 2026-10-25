@@ -12,16 +12,33 @@ internal sealed class StubHandler : HttpMessageHandler
 {
     internal const string NewId = "t-new";
 
-    private readonly HttpStatusCode _status;
-    private readonly string _body;
+    private readonly List<Func<HttpResponseMessage>> _answers = [];
 
-    public StubHandler(HttpStatusCode status = HttpStatusCode.OK, string? body = null)
-    {
-        _status = status;
-        _body = body ?? OneTransaction(NewId);
-    }
+    public StubHandler(HttpStatusCode status = HttpStatusCode.OK, string? body = null, (string Name, string Value)[]? headers = null) =>
+        Answer(status, body, headers);
 
     public List<(string Method, string Path, string Body)> Requests { get; } = [];
+
+    /// <summary>Queues the next answer; the last one repeats when the queue runs out.</summary>
+    public StubHandler Answer(HttpStatusCode status, string? body = null, (string Name, string Value)[]? headers = null)
+    {
+        _answers.Add(() =>
+        {
+            var response = new HttpResponseMessage(status)
+            {
+                Content = new StringContent(body ?? OneTransaction(NewId), System.Text.Encoding.UTF8, "application/json"),
+            };
+
+            foreach (var (name, value) in headers ?? [])
+            {
+                response.Headers.TryAddWithoutValidation(name, value);
+            }
+
+            return response;
+        });
+
+        return this;
+    }
 
     protected override async Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request,
@@ -31,10 +48,7 @@ internal sealed class StubHandler : HttpMessageHandler
         var body = request.Content is null ? string.Empty : await request.Content.ReadAsStringAsync(cancellationToken);
         Requests.Add((request.Method.Method, request.RequestUri!.PathAndQuery, body));
 
-        return new HttpResponseMessage(_status)
-        {
-            Content = new StringContent(_body, System.Text.Encoding.UTF8, "application/json"),
-        };
+        return _answers[Math.Min(Requests.Count - 1, _answers.Count - 1)]();
     }
 
     /// <summary>The API's own answer, written the way the API writes it.</summary>
