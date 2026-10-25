@@ -76,9 +76,12 @@ public static class RepairPlanBuilder
         bool deleteExtras = true
     )
     {
-        IReadOnlyList<PlannedDelete> deletes = repairBalances ? Deletes(reconciliation, deleteDuplicates, deleteExtras) : [];
+        var consolidated = repairBalances ? Consolidated(reconciliation) : ([], []);
+        IReadOnlyList<PlannedDelete> deletes = repairBalances
+            ? [.. Deletes(reconciliation, deleteDuplicates, deleteExtras), .. consolidated.Item1]
+            : [];
         IReadOnlyList<PlannedCreate> creates = repairBalances
-            ? [.. Creates(reconciliation), .. Rescued(reconciliation, deletes)]
+            ? [.. Creates(reconciliation), .. Rescued(reconciliation, deletes), .. consolidated.Item2]
             : [];
         IReadOnlyList<PlannedCategory> categories = categorize
             ? [.. proposals.Where(proposal => proposal.IsConfident).Select(proposal => new PlannedCategory(
@@ -97,6 +100,56 @@ public static class RepairPlanBuilder
             Notes: Notes(reconciliation),
             Moves: repairBalances ? Moves(reconciliation) : []
         );
+    }
+
+    /// <summary>
+    /// Several rows that all say they are a balance adjustment are one thing written down more than
+    /// once. They are replaced by a single row carrying their sum, so the balance does not move and
+    /// the account stops reading like a pile of excuses. A set that cancels out is simply removed.
+    /// </summary>
+    private static (IReadOnlyList<PlannedDelete> Deletes, IReadOnlyList<PlannedCreate> Creates) Consolidated(
+        Reconciliation reconciliation
+    )
+    {
+        var deletes = new List<PlannedDelete>();
+        var creates = new List<PlannedCreate>();
+
+        foreach (var account in reconciliation.Accounts)
+        {
+            var adjustments = account
+                .OnlyInPlan.Where(Reconcile.AdjustmentFinder.IsSpelledOut)
+                .OrderBy(transaction => transaction.Date)
+                .ToList();
+            if (adjustments.Count < 2)
+            {
+                continue;
+            }
+
+            var sum = new Money(adjustments.Sum(transaction => transaction.Amount.Amount));
+            var latest = adjustments[^1];
+            var reason = $"one of {adjustments.Count} adjustments, written again as one row";
+
+            deletes.AddRange(adjustments.Select(transaction => new PlannedDelete(account.Account.Name, transaction, reason)));
+
+            if (!sum.IsZero)
+            {
+                var memo = $"{adjustments.Count} adjustments consolidated";
+                creates.Add(
+                    new PlannedCreate(
+                        AccountId: account.Account.Id,
+                        AccountName: account.Account.Name,
+                        Date: latest.Date,
+                        Amount: sum,
+                        PayeeName: "Balance adjustment",
+                        Memo: memo,
+                        ImportId: ImportIds.Of(account.Account.Id, latest.Date, sum, "Balance adjustment", memo),
+                        CategoryId: null
+                    )
+                );
+            }
+        }
+
+        return (deletes, creates);
     }
 
     /// <summary>
@@ -261,19 +314,25 @@ public static class RepairPlanBuilder
     {
         var deletes = new List<PlannedDelete>();
 
-        // A correction is an extra like any other; it is only named better above.
+        // An entry that says it is a balance adjustment is the written record of a gap with no rows
+        // behind it. Removing it does not tidy anything up — it puts the gap back, and the next
+        // reconcile asks for the same adjustment again. It stays.
+        var adjustments = reconciliation
+            .Accounts.SelectMany(account => account.OnlyInPlan)
+            .Where(AdjustmentFinder.IsSpelledOut)
+            .Select(transaction => transaction.Id)
+            .ToHashSet(StringComparer.Ordinal);
+
         if (deleteExtras)
         {
             deletes.AddRange(
-                reconciliation.Accounts.SelectMany(account => account.OnlyInPlan.Select(transaction =>
-                    new PlannedDelete(account.Account.Name, transaction, "the export does not have this row")))
-            );
-        }
-        else
-        {
-            deletes.AddRange(
-                reconciliation.Accounts.SelectMany(account => account.Adjustments.Select(adjustment =>
-                    new PlannedDelete(account.Account.Name, adjustment.Transaction, adjustment.Why)))
+                reconciliation.Accounts.SelectMany(account =>
+                    account
+                        .OnlyInPlan.Where(transaction => !adjustments.Contains(transaction.Id))
+                        .Select(transaction => new PlannedDelete(
+                            account.Account.Name,
+                            transaction,
+                            "the export does not have this row")))
             );
         }
 

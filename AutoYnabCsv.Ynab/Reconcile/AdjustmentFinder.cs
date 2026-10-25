@@ -39,13 +39,21 @@ public static class AdjustmentFinder
         return spelledOut.Count > 0 ? spelledOut : Suspects(inPlanOnly);
     }
 
+    /// <summary>
+    /// Whether the entry says out loud that it is a correction. An entry that says so is a written
+    /// record of a gap, not a purchase someone forgot to match, which is why it is never removed.
+    /// </summary>
+    public static bool IsSpelledOut(YnabTransaction transaction) =>
+        TellingWords.Any(word =>
+            NameMatch.Normalize($"{transaction.PayeeName} {transaction.Memo}")
+                .Contains(word, StringComparison.Ordinal));
+
     private static string Why(YnabTransaction transaction, YnabSnapshot snapshot)
     {
-        var said = NameMatch.Normalize($"{transaction.PayeeName} {transaction.Memo}");
-        var word = TellingWords.FirstOrDefault(entry => said.Contains(entry, StringComparison.Ordinal));
-
-        if (word is not null)
+        if (IsSpelledOut(transaction))
         {
+            var said = NameMatch.Normalize($"{transaction.PayeeName} {transaction.Memo}");
+            var word = TellingWords.First(entry => said.Contains(entry, StringComparison.Ordinal));
             return $"the description says it is a correction ('{word}')";
         }
 
