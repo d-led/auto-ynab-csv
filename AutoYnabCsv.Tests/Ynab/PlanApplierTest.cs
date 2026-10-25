@@ -40,6 +40,32 @@ public class PlanApplierTest
     }
 
     [TestMethod]
+    public async Task ARowWhoseImportIdOutlivedItIsWrittenUnderAnotherOne()
+    {
+        var create = Create("2026-10-23", -45.81m);
+        var gateway = new FakeGateway().WithBurntImportId(create.ImportId);
+
+        var result = await Apply(Plan(create), gateway);
+
+        Assert.AreEqual(1, result.Created, "the id was taken by a row that no longer exists");
+        Assert.AreEqual(1, gateway.Transactions.Count);
+        Assert.AreEqual(create.ImportId + "-r2", gateway.Transactions[0].ImportId);
+    }
+
+    [TestMethod]
+    public async Task ARowThatIsStillThereIsNotWrittenASecondTime()
+    {
+        var gateway = new FakeGateway();
+        var plan = Plan(Create("2026-10-23", -45.81m));
+        await Apply(plan, gateway);
+
+        var second = await Apply(plan, gateway);
+
+        Assert.AreEqual(1, second.AlreadyThere);
+        Assert.AreEqual(1, gateway.Transactions.Count, "a row that exists is not duplicated under a new id");
+    }
+
+    [TestMethod]
     public async Task WhatWasDeletedCanBePutBack()
     {
         var gateway = new FakeGateway();

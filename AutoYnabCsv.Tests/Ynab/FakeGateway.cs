@@ -110,4 +110,14 @@ internal sealed class FakeGateway : IYnabGateway
     ) => Task.CompletedTask;
 
     public void Seed(YnabTransaction transaction) => _transactions.Add(transaction);
+
+    /// <summary>
+    /// An import id YNAB still holds for a row that is gone: deleting a transaction does not release
+    /// the id it was written under.
+    /// </summary>
+    public FakeGateway WithBurntImportId(string importId)
+    {
+        _importIds.Add(importId);
+        return this;
+    }
 }

@@ -67,7 +67,16 @@ public static class PlanApplier
         {
             try
             {
-                var id = await gateway.CreateAsync(plan.PlanId, create, cancellationToken);
+                var id = await WriteAsync(plan, create, gateway, cancellationToken);
+
+                if (id is null)
+                {
+                    // The import id is already in the plan and the row with it: this row was
+                    // applied before, which is the point of a deterministic import id.
+                    alreadyThere++;
+                    continue;
+                }
+
                 created++;
                 Journal.Append(
                     journalPath,
@@ -80,12 +89,6 @@ public static class PlanApplier
                         Deleted: null
                     )
                 );
-            }
-            catch (YnabApiException exception) when (exception.Status == System.Net.HttpStatusCode.Conflict)
-            {
-                // The import id is already in the plan: this row was applied before, which is the
-                // point of a deterministic import id. Nothing to do, nothing to report.
-                alreadyThere++;
             }
             catch (YnabApiException exception)
             {
@@ -148,6 +151,57 @@ public static class PlanApplier
 
         return new ApplyResult(created, alreadyThere, deleted, categorized, moved, problems);
     }
+
+    /// <summary>
+    /// Writes one row and answers with its id, or with null when the plan already has it. YNAB keeps
+    /// the import id of a transaction after the transaction itself is gone, so a row this tool created
+    /// and a later repair removed can never be written under that id again — a repair would then
+    /// propose the same create on every pass and never converge. Such an id is taken again with a
+    /// suffix; an id whose row is still there is left alone.
+    /// </summary>
+    private static async Task<string?> WriteAsync(
+        RepairPlan plan,
+        PlannedCreate create,
+        IYnabGateway gateway,
+        CancellationToken cancellationToken
+    )
+    {
+        try
+        {
+            return await gateway.CreateAsync(plan.PlanId, create, cancellationToken);
+        }
+        catch (YnabApiException exception) when (exception.Status == System.Net.HttpStatusCode.Conflict)
+        {
+            if (await IsInThePlanAsync(plan.PlanId, create, gateway, cancellationToken))
+            {
+                return null;
+            }
+
+            return await gateway.CreateAsync(
+                plan.PlanId,
+                create with { ImportId = TakenAgain(create.ImportId) },
+                cancellationToken
+            );
+        }
+    }
+
+    /// <summary>The row is in the plan now, not merely its id on record.</summary>
+    private static async Task<bool> IsInThePlanAsync(
+        string planId,
+        PlannedCreate create,
+        IYnabGateway gateway,
+        CancellationToken cancellationToken
+    )
+    {
+        var from = new DateOnly(create.Date.Year, create.Date.Month, 1);
+        var month = await gateway.TransactionsAsync(planId, from, from.AddMonths(1).AddDays(-1), cancellationToken);
+
+        return month.Any(transaction => string.Equals(transaction.ImportId, create.ImportId, StringComparison.Ordinal));
+    }
+
+    /// <summary>An import id YNAB accepts (at most 36 characters) that no row of ours has held before.</summary>
+    private static string TakenAgain(string importId) =>
+        importId.Length <= 32 ? importId + "-r2" : importId[..32] + "-r2";
 
     /// <summary>
     /// Puts back what the journal says was taken, newest first: a deleted transaction is recreated
