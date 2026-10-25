@@ -63,39 +63,8 @@ public static class PlanApplier
             }
         }
 
-        foreach (var create in plan.Creates)
-        {
-            try
-            {
-                var id = await WriteAsync(plan, create, gateway, cancellationToken);
-
-                if (id is null)
-                {
-                    // The import id is already in the plan and the row with it: this row was
-                    // applied before, which is the point of a deterministic import id.
-                    alreadyThere++;
-                    continue;
-                }
-
-                created++;
-                Journal.Append(
-                    journalPath,
-                    new JournalEntry(
-                        At: DateTimeOffset.UtcNow,
-                        Kind: JournalEntry.CreatedKind,
-                        Detail: $"{create.AccountName} {create.Date:yyyy-MM-dd} {create.Amount:0.00} {create.PayeeName}",
-                        TransactionId: id,
-                        Created: create,
-                        Deleted: null
-                    )
-                );
-            }
-            catch (YnabApiException exception)
-            {
-                problems.Add($"create {create.Date:yyyy-MM-dd} {create.Amount:0.00} {create.PayeeName}: {exception.Message}");
-            }
-        }
-
+        // Removal comes before writing: deleting one leg of a transfer takes the other leg with it, and
+        // a row the plan wants back has to be written after that has happened, not before.
         foreach (var delete in plan.Deletes)
         {
             try
@@ -122,6 +91,39 @@ public static class PlanApplier
             catch (YnabApiException exception)
             {
                 problems.Add($"delete {delete.Transaction.Id}: {exception.Message}");
+            }
+        }
+
+        foreach (var create in plan.Creates)
+        {
+            try
+            {
+                var id = await WriteAsync(plan.PlanId, create, gateway, cancellationToken);
+
+                if (id is null)
+                {
+                    // The import id is already in the plan and the row with it: this row was
+                    // applied before, which is the point of a deterministic import id.
+                    alreadyThere++;
+                    continue;
+                }
+
+                created++;
+                Journal.Append(
+                    journalPath,
+                    new JournalEntry(
+                        At: DateTimeOffset.UtcNow,
+                        Kind: JournalEntry.CreatedKind,
+                        Detail: $"{create.AccountName} {create.Date:yyyy-MM-dd} {create.Amount:0.00} {create.PayeeName}",
+                        TransactionId: id,
+                        Created: create,
+                        Deleted: null
+                    )
+                );
+            }
+            catch (YnabApiException exception)
+            {
+                problems.Add($"create {create.Date:yyyy-MM-dd} {create.Amount:0.00} {create.PayeeName}: {exception.Message}");
             }
         }
 
@@ -160,7 +162,7 @@ public static class PlanApplier
     /// suffix; an id whose row is still there is left alone.
     /// </summary>
     private static async Task<string?> WriteAsync(
-        RepairPlan plan,
+        string planId,
         PlannedCreate create,
         IYnabGateway gateway,
         CancellationToken cancellationToken
@@ -168,20 +170,16 @@ public static class PlanApplier
     {
         try
         {
-            return await gateway.CreateAsync(plan.PlanId, create, cancellationToken);
+            return await gateway.CreateAsync(planId, create, cancellationToken);
         }
         catch (YnabApiException exception) when (exception.Status == System.Net.HttpStatusCode.Conflict)
         {
-            if (await IsInThePlanAsync(plan.PlanId, create, gateway, cancellationToken))
+            if (await IsInThePlanAsync(planId, create, gateway, cancellationToken))
             {
                 return null;
             }
 
-            return await gateway.CreateAsync(
-                plan.PlanId,
-                create with { ImportId = TakenAgain(create.ImportId) },
-                cancellationToken
-            );
+            return await gateway.CreateAsync(planId, create with { ImportId = TakenAgain(create.ImportId) }, cancellationToken);
         }
     }
 
@@ -231,7 +229,9 @@ public static class PlanApplier
                         break;
 
                     case { Kind: JournalEntry.DeletedKind, Deleted: { } gone }:
-                        await gateway.CreateAsync(
+                        // The import id the row had is the one its own deletion took away, so putting
+                        // it back has to cope with that id being held — the same way a create does.
+                        await WriteAsync(
                             planId,
                             new PlannedCreate(
                                 AccountId: gone.AccountId,
@@ -243,6 +243,7 @@ public static class PlanApplier
                                 ImportId: gone.ImportId ?? string.Empty,
                                 CategoryId: gone.CategoryId
                             ),
+                            gateway,
                             cancellationToken
                         );
                         created++;

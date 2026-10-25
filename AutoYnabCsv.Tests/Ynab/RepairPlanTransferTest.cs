@@ -128,6 +128,46 @@ public class RepairPlanTransferTest
         Assert.AreEqual(1, something.Total);
     }
 
+    [TestMethod]
+    public void DeletingAHalfOfATransferBringsBackTheHalfTheExportHas()
+    {
+        var bogus = Sample.T("bad", "2026-04-01", -1.12m, "Transfer : GiroTogether", transferAccountId: Together.Id);
+        var wanted = Sample.T("good", "2026-04-01", 1.12m, "Transfer : DKB Giro") with
+        {
+            AccountId = Together.Id,
+            AccountName = Together.Name,
+            TransferAccountId = Giro.Id,
+        };
+
+        var reconciliation = new Reconciliation(
+            Snapshot: SnapshotOf(bogus, wanted),
+            Accounts: [AccountReconciliationOf(Giro, extra: bogus), AccountReconciliationOf(Together)],
+            Unresolved: [],
+            Transfers: [],
+            Repoints: [],
+            Reaccountings: []
+        );
+
+        var plan = RepairPlanBuilder.From(reconciliation, []);
+
+        Assert.AreEqual(1, plan.Deletes.Count, "the half the bank does not have goes");
+        var rescue = plan.Creates.SingleOrDefault(create => create.Amount == 1.12m);
+        Assert.IsNotNull(rescue, "and the half the bank does have is written again, or the delete takes it too");
+        Assert.AreEqual(Together.Id, rescue.AccountId);
+    }
+
+    private static YnabSnapshot SnapshotOf(params YnabTransaction[] transactions) =>
+        new(
+            PlanId: "plan-1",
+            PlanName: "Household",
+            CurrencyFormat: "EUR",
+            FetchedAt: DateTimeOffset.UnixEpoch,
+            Accounts: [Giro, Together],
+            Categories: [],
+            Payees: [],
+            Transactions: transactions
+        );
+
     private static YnabAccount Account(string id, string name) =>
         new(id, name, "checking", OnBudget: true, Closed: false, Money.Zero, Money.Zero, Money.Zero);
 

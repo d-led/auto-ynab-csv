@@ -53,8 +53,9 @@ public sealed class RequestBudget
 
     /// <summary>
     /// Waits as long as the pace asks for — a floor between requests, or more when the hour is nearly
-    /// gone. Waiting for the window to have room at all is the one wait that can be refused: an hour
-    /// of sitting still is not a decision a command line should make on its own.
+    /// gone — but never longer than the caller is willing to sit still. A pace longer than that is
+    /// refused with the time, because eighteen requests two minutes apart is half an hour of a command
+    /// line apparently doing nothing.
     /// </summary>
     public async Task AcquireAsync(
         TimeSpan longestWait,
@@ -66,14 +67,13 @@ public sealed class RequestBudget
 
         var now = _clock();
         var untilThereIsRoom = _spent.Count < _perHour ? TimeSpan.Zero : _spent[0] + Window - now;
-
-        if (untilThereIsRoom > longestWait)
-        {
-            throw new RequestBudgetExhaustedException(untilThereIsRoom);
-        }
-
         var spacing = Spacing(now);
         var delay = untilThereIsRoom > spacing ? untilThereIsRoom : spacing;
+
+        if (delay > longestWait)
+        {
+            throw new RequestBudgetExhaustedException(delay);
+        }
 
         if (delay > TimeSpan.Zero)
         {

@@ -132,6 +132,7 @@ public static class TransferFinder
                 .Where(candidate => candidate.Row.Amount == -outgoing.Row.Amount)
                 .Where(candidate => Math.Abs(candidate.Row.Date.DayNumber - outgoing.Row.Date.DayNumber) <= dayWindow)
                 .Where(candidate => !taken.Contains((candidate.Label, candidate.Row.Index)))
+                .Where(candidate => CanBeTheOtherSide(outgoing, candidate, own))
                 .OrderByDescending(candidate => Confirmed(outgoing, candidate, own))
                 .ThenBy(candidate => Math.Abs(candidate.Row.Date.DayNumber - outgoing.Row.Date.DayNumber))
                 .FirstOrDefault();
@@ -159,10 +160,31 @@ public static class TransferFinder
         return transfers;
     }
 
-    /// <summary>The export names the account the money went to, and that is where it turned up.</summary>
+    /// <summary>
+    /// The export names the account on the other side, and that is where the money turned up.
+    /// </summary>
     private static bool Confirmed(RowOf outgoing, RowOf candidate, OwnAccounts own) =>
-        own.LabelOf(outgoing.Row.CounterpartyIban) is { } label
-        && string.Equals(label, candidate.Label, StringComparison.Ordinal);
+        Names(outgoing, candidate, own) || Names(candidate, outgoing, own);
+
+    private static bool Names(RowOf from, RowOf to, OwnAccounts own) =>
+        own.LabelOf(from.Row.CounterpartyIban) is { } label
+        && string.Equals(label, to.Label, StringComparison.Ordinal);
+
+    /// <summary>
+    /// Two rows can be the two halves of one movement when the export names the other side, or when
+    /// neither of them names anybody and the amount and the day are the only clues there are. A row
+    /// that names somebody is a payment to them, whatever else happens to look like it: DKB prints an
+    /// internal number for its own fees, and two fees booked in two accounts on the same day are two
+    /// fees, not a transfer between those accounts.
+    /// </summary>
+    private static bool CanBeTheOtherSide(RowOf outgoing, RowOf candidate, OwnAccounts own) =>
+        Confirmed(outgoing, candidate, own)
+        || (!
+            NamesAnybody(outgoing.Row)
+            && !NamesAnybody(candidate.Row)
+        );
+
+    private static bool NamesAnybody(BankRow row) => !string.IsNullOrWhiteSpace(row.CounterpartyIban);
 
     /// <summary>
     /// The plan's transfers the export does not know about, paired leg with leg. The two halves need

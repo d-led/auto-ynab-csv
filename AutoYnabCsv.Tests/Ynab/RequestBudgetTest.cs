@@ -16,9 +16,11 @@ public class RequestBudgetTest
         var clock = new TestClock();
         var budget = clock.Budget();
 
+        // As patient as the pace needs: the point here is how the hour is spent, not how long a
+        // command will sit still for it.
         for (var request = 0; request < 200; request++)
         {
-            await budget.AcquireAsync(Patience);
+            await budget.AcquireAsync(TimeSpan.FromHours(1));
         }
 
         Assert.AreEqual(0, budget.Remaining);
@@ -84,6 +86,26 @@ public class RequestBudgetTest
         clock.Now = Noon.AddMinutes(30);
 
         Assert.AreEqual(TimeSpan.FromMinutes(15), budget.DelayBeforeNext(), "half of what is left: the last request still has to fit");
+    }
+
+    [TestMethod]
+    public async Task APaceLongerThanTheCommandWillSitThroughIsRefusedRatherThanSatThrough()
+    {
+        var clock = new TestClock();
+        var budget = clock.Budget(perHour: 10);
+
+        for (var request = 0; request < 9; request++)
+        {
+            await budget.AcquireAsync(Patience);
+        }
+
+        clock.Now = Noon.AddMinutes(30);
+
+        var failure = await Assert.ThrowsExactlyAsync<RequestBudgetExhaustedException>(() =>
+            budget.AcquireAsync(TimeSpan.FromSeconds(60))
+        );
+
+        Assert.AreEqual(TimeSpan.FromMinutes(15), failure.Until, "the pace it would have taken, said out loud");
     }
 
     [TestMethod]

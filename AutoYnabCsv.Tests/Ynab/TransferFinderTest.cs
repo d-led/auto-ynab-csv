@@ -10,9 +10,14 @@ public class TransferFinderTest
     private const string Giro = "DE00000000000000000001";
     private const string Together = "DE00000000000000000004";
     private const string N26 = "DE00000000000000000026";
+    private const string Visa = "DE00000000000000000005";
 
     private static readonly OwnAccounts Own = OwnAccounts.Of(
         [Statement("Girokonto · 9004", Giro), Statement("Girokonto · 3784", Together)]
+    );
+
+    private static readonly OwnAccounts OwnWithVisa = OwnAccounts.Of(
+        [Statement("Girokonto · 9004", Giro), Statement("Visa Kreditkarte 9158", Visa)]
     );
 
     [TestMethod]
@@ -108,6 +113,49 @@ public class TransferFinderTest
         );
 
         Assert.AreEqual(0, transfers.Count);
+    }
+
+    [TestMethod]
+    public void TwoFeesBookedInTwoAccountsAreTwoFeesAndNotATransfer()
+    {
+        var transfers = TransferFinder.Pair(
+            [
+                new RowOf("Girokonto · 9004", Row(0, "2026-07-01", -0.54m, "0000000000")),
+                new RowOf("Girokonto · 3784", Row(0, "2026-07-01", 0.54m, "1209823267")),
+            ],
+            Own
+        );
+
+        Assert.AreEqual(0, transfers.Count, "both rows name somebody, and neither names the other");
+    }
+
+    [TestMethod]
+    public void APaymentToAStrangerIsNotATransferEvenWhenTheOtherSideNamesNobody()
+    {
+        var transfers = TransferFinder.Pair(
+            [
+                new RowOf("Girokonto · 9004", Row(0, "2026-01-14", -400m, "DE99999999999999999999")),
+                new RowOf("Visa Kreditkarte 9158", Row(0, "2026-01-14", 400m, string.Empty)),
+            ],
+            Own
+        );
+
+        Assert.AreEqual(0, transfers.Count, "one side named a stranger, and that settles it");
+    }
+
+    [TestMethod]
+    public void ARowThatNamesNobodyStillFindsItsOtherSide()
+    {
+        var transfers = TransferFinder.Pair(
+            [
+                new RowOf("Visa Kreditkarte 9158", Row(0, "2026-01-14", 400m, string.Empty)),
+                new RowOf("Girokonto · 9004", Row(0, "2026-01-14", -400m, Spaced(Visa))),
+            ],
+            OwnWithVisa
+        );
+
+        Assert.AreEqual(1, transfers.Count, "the card's download prints no number at all");
+        Assert.IsTrue(transfers[0].ConfirmedByAccountNumber, "and the bank's side names the card");
     }
 
     [TestMethod]

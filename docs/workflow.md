@@ -37,6 +37,14 @@ wc -l < artifacts/ynab/journal.jsonl      # how many actions have been applied s
 
 ## The check — changes nothing
 
+One word, if you keep your mapping in `~/.config/auto-ynab-csv/accounts.txt` (one `label=id` per line):
+
+```bash
+./scripts/check.sh ~/Downloads/exports
+```
+
+Or the whole thing by hand:
+
 ```bash
 dotnet run --project AutoYnabCsv.ConsoleApp -- ynab reconcile \
   --snapshot artifacts/ynab/today --input ~/Downloads/exports \
@@ -105,6 +113,7 @@ report — it dates the gap. A gap that will not move is a decision to make, not
 | a memo that stops mid-sentence | DK B writes interest statements longer than the API accepts. Cut, not lost. |
 | `Unresolved export: <label>` | that export needs `--account`. If it prints no balance and no account number (n26 does neither), also `--own-iban` and `--expect-balance`. |
 | the numbers do not shrink twice | stop and read `## Where the ledgers stop agreeing`. |
+| a fee in two accounts keeps getting created and deleted | this was a bug, fixed: deleting one half of a transfer takes the other half with it, so the plan now writes the half the bank does have back afterwards. |
 | you applied the wrong plan | one `undo`, below. |
 
 A check of three years of history costs about 38 of the hour's 200 requests, so it is worth running twice

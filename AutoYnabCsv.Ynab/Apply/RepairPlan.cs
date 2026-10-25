@@ -75,8 +75,10 @@ public static class RepairPlanBuilder
         bool deleteExtras = true
     )
     {
-        IReadOnlyList<PlannedCreate> creates = repairBalances ? Creates(reconciliation) : [];
         IReadOnlyList<PlannedDelete> deletes = repairBalances ? Deletes(reconciliation, deleteDuplicates, deleteExtras) : [];
+        IReadOnlyList<PlannedCreate> creates = repairBalances
+            ? [.. Creates(reconciliation), .. Rescued(reconciliation, deletes)]
+            : [];
         IReadOnlyList<PlannedCategory> categories = categorize
             ? [.. proposals.Where(proposal => proposal.IsConfident).Select(proposal => new PlannedCategory(
                 TransactionId: proposal.Transaction.Id,
@@ -95,6 +97,64 @@ public static class RepairPlanBuilder
             Moves: repairBalances ? Moves(reconciliation) : []
         );
     }
+
+    /// <summary>
+    /// A transfer has two legs and YNAB removes both when one is deleted. When the leg being removed is
+    /// half of a movement whose other half the export does have, that other half goes too — so it is
+    /// written again, as an ordinary row, because the transfer it was half of is not going to exist any
+    /// more. Without this, deleting a wrong transfer takes the right row with it, and the next reconcile
+    /// asks for that row back: the same numbers, forever.
+    /// </summary>
+    private static IReadOnlyList<PlannedCreate> Rescued(
+        Reconciliation reconciliation,
+        IReadOnlyList<PlannedDelete> deletes
+    )
+    {
+        var victims = deletes.Select(delete => delete.Transaction.Id).ToHashSet(StringComparer.Ordinal);
+
+        return
+        [
+            .. deletes
+                .Select(delete => delete.Transaction)
+                .Where(victim => victim.IsTransfer && victim.TransferAccountId is not null)
+                .Select(victim => PartnerOf(victim, reconciliation.Snapshot.Transactions))
+                .OfType<YnabTransaction>()
+                .Where(partner => !victims.Contains(partner.Id))
+                .Select(partner => CreateOf(partner, reconciliation.Snapshot.Accounts))
+                .DistinctBy(create => create.ImportId, StringComparer.Ordinal)
+        ];
+    }
+
+    /// <summary>
+    /// The other half of a transfer: same day, opposite amount, in the account the leg names. YNAB keeps
+    /// both halves on one day, which is what makes the partner findable at all.
+    /// </summary>
+    private static YnabTransaction? PartnerOf(YnabTransaction victim, IReadOnlyList<YnabTransaction> transactions) =>
+        transactions.FirstOrDefault(candidate =>
+            candidate.Id != victim.Id
+            && candidate.Date == victim.Date
+            && candidate.AccountId == victim.TransferAccountId
+            && candidate.Amount == -victim.Amount
+        );
+
+    /// <summary>The row as an ordinary one, written again under an import id of ours.</summary>
+    private static PlannedCreate CreateOf(YnabTransaction partner, IReadOnlyList<YnabAccount> accounts) =>
+        new(
+            AccountId: partner.AccountId,
+            AccountName: partner.AccountName,
+            Date: partner.Date,
+            Amount: partner.Amount,
+            PayeeName: partner.PayeeName ?? string.Empty,
+            Memo: partner.Memo ?? string.Empty,
+            ImportId: ImportIds.Of(
+                partner.AccountId,
+                partner.Date,
+                partner.Amount,
+                partner.PayeeName ?? string.Empty,
+                partner.Memo ?? string.Empty
+            ),
+            CategoryId: partner.CategoryId
+        );
 
     /// <summary>
     /// A row the bank has in another account is moved there instead of being added here and removed

@@ -74,6 +74,16 @@ internal sealed class FakeGateway : IYnabGateway
             ?? throw new YnabApiException(HttpStatusCode.NotFound, "no such transaction");
 
         _transactions.Remove(gone);
+
+        // YNAB removes both legs of a transfer with one delete, and this is the behaviour that made a
+        // repair loop: the leg being removed took a correct row with it.
+        if (gone.TransferAccountId is { } other)
+        {
+            _transactions.RemoveAll(candidate =>
+                candidate.AccountId == other && candidate.Date == gone.Date && candidate.Amount == -gone.Amount
+            );
+        }
+
         return Task.FromResult(gone);
     }
 
