@@ -1,4 +1,4 @@
-name: Publish .NET CLI Binary
+name: Publish self-contained binaries
 
 on:
   push:
@@ -58,6 +58,7 @@ jobs:
         with:
           pattern: published-*
           merge-multiple: true
+          path: dist
 
       - name: Create release
         id: create_release
@@ -66,8 +67,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
+          # Recursive, and a release without files is a failure rather than a release: the first
+          # attempt at this produced an empty v0.0.5 because the glob matched nothing.
           files: |
-            ./auto-ynab-csv-*.tgz
+            dist/**/*.tgz
+          fail_on_unmatched_files: true
           body: |
             Two programs per archive, neither of which needs .NET installed:
 
