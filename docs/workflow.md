@@ -69,7 +69,7 @@ Stuck on the same numbers twice? Stop and read the `## Where the ledgers stop ag
 
 ## Things that will bite you
 
-- **200 requests an hour.** A snapshot costs one request per month of history, so a 3-year plan costs about 35. Two checks a minute will get you a `429` and a wait. That is the limit working, not a failure.
+- **200 requests an hour.** A snapshot costs one request per month of history, so a 3-year plan costs about 35. The tool counts its own requests in `~/Library/Application Support/auto-ynab-csv/ynab-requests.txt` and will not go over the hour, even across two runs — the API sends no header saying what is left, so this file is the only memory. If the hour is spent it says when to come back instead of failing halfway.
 - **A memo is capped at 500 characters.** DK B puts a whole interest statement in one. It is cut, not rejected.
 - **`cleared` is a word, not a boolean.** `cleared`, `uncleared`, `reconciled`.
 - **Transfers are one row, not two.** Creating both legs doubles the money.
