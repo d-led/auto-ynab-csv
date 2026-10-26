@@ -103,7 +103,9 @@ public static class EntryEnricher
             parts.Where(part => part.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase)
         );
 
-        return Shorten(Tidy(WithoutAmount(memo, entry.Amount)));
+        // Noise goes before the amount is looked for and before anything is cut short: a phrase that
+        // is not worth reading should not be what pushes an item past the limit either.
+        return Shorten(Tidy(WithoutAmount(MemoNoise.Without(memo), entry.Amount)));
     }
 
     /// <summary>

@@ -174,6 +174,23 @@ public class EntryEnricherTest
     }
 
     [TestMethod]
+    public void TheShopsBoilerplateNeverReachesTheMemo()
+    {
+        // Banks copy what the shop printed; a return policy in the memo is words a person skips
+        // past on a phone to reach the one thing they are looking for.
+        var enriched = EntryEnricher.Of(
+            Entry("Amazon", 20.58m, "AMZN Mktp DE Return or replace items in Your Orders"),
+            (MailFacts?)null
+        );
+
+        Assert.IsFalse(
+            enriched.Memo.Contains("Return or replace", StringComparison.Ordinal),
+            $"the shop's policy is not a purchase: {enriched.Memo}"
+        );
+        StringAssert.Contains(enriched.Memo, "AMZN Mktp DE", "and what is left is still said");
+    }
+
+    [TestMethod]
     public void TheMarketplaceCodeAloneIsNotWorthKeeping()
     {
         var enriched = EntryEnricher.Of(
