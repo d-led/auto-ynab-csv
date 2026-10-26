@@ -16,7 +16,8 @@ public sealed record ReportContext(
     MailStore? Mailbox,
     ReportProgress Progress,
     IMailFinder? Finder = null,
-    IMailBodySource? Bodies = null
+    IMailBodySource? Bodies = null,
+    bool AllowRebuild = true
 )
 {
     public string MailboxRoot => Mailbox?.Root ?? "unavailable";
@@ -34,7 +35,8 @@ public sealed record ReportContext(
         string toolVersion,
         bool searchMail = false,
         string? mailboxRoot = null,
-        ReportProgress? progress = null
+        ReportProgress? progress = null,
+        bool allowRebuild = true
     )
     {
         var mailbox = ReadableMailbox(mailboxRoot);
@@ -56,7 +58,8 @@ public sealed record ReportContext(
                     hooks.Stubs
                 )
                 : null,
-            search ? BodySource() : null
+            search ? BodySource() : null,
+            allowRebuild
         );
     }
 
@@ -147,6 +150,14 @@ public static class ReportService
     private static MailSyncReport? SyncMail(ReportContext context, DateTimeOffset? since)
     {
         if (context.Mailbox is not { } mailbox)
+        {
+            return null;
+        }
+
+        // Stored facts built by other rules would all have to be read again — the whole mailbox, for
+        // facts about years nobody asked about. A short import can say no to that; the report then
+        // rests on exports and whatever the index already knows.
+        if (context.Index.Fingerprint != context.Rules.Fingerprint && !context.AllowRebuild)
         {
             return null;
         }
