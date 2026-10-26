@@ -571,9 +571,24 @@ downloaded a release**, the command is the binary itself — no runtime, no path
 }
 ```
 
-**If you built from source**, point it at the built assembly instead — and run `dotnet <dll>`, not
-`dotnet run`: `run` prints build output on the same channel the protocol uses, and the client sees
-that as garbage.
+**If you built from source**, `scripts/mcp.sh` builds the checkout and then runs the server, so every
+start gets the code as it is on disk — no stale DLL, nothing to remember:
+
+```json
+{
+  "servers": {
+    "auto-ynab-csv": {
+      "type": "stdio",
+      "command": "/absolute/path/to/auto-ynab-csv/scripts/mcp.sh"
+    }
+  }
+}
+```
+
+The script exists because `dotnet run` is not enough on its own: it prints build output on **stdout**,
+which is exactly where the protocol's messages go, and the client reads that as garbage. `mcp.sh`
+sends the build's noise to stderr and leaves stdout to the server. If you would rather avoid a
+script, build first and point the registration at the assembly:
 
 ```json
 {
@@ -586,6 +601,9 @@ that as garbage.
   }
 }
 ```
+
+That one runs whatever was built last — `auto-ynab-csv-mcp --version`, or the `version` line the
+server reports, says how old it is.
 
 ### The tools
 
