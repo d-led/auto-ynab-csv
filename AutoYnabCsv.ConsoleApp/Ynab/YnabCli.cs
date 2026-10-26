@@ -50,6 +50,7 @@ public static class YnabCli
                 "snapshot" => await SnapshotAsync(options),
                 "accounts" => Accounts(options),
                 "balances" => await BalancesAsync(options),
+                "totals" => await TotalsAsync(options),
                 "reconcile" => Reconcile(options),
                 "apply" => await ApplyAsync(options),
                 "import" => await ImportAsync(options),
@@ -424,6 +425,54 @@ public static class YnabCli
         );
     }
 
+    /// <summary>
+    /// Bank balance against plan balance, per account: one request for every account, and the
+    /// closing balance the export itself prints. No snapshot, no transaction list, no queue — the
+    /// cheapest honest answer to "do the two ledgers agree", which is what a repair is judged by.
+    /// </summary>
+    private static async Task<int> TotalsAsync(YnabOptions options)
+    {
+        var input = options.Required("input");
+        var statements = BankStatementReader.ReadFolder(input);
+
+        if (statements.Count == 0)
+        {
+            Console.Error.WriteLine($"No bank export in {input}");
+            return 1;
+        }
+
+        using var http = new HttpClient();
+        var gateway = Gateway(http);
+        var planId = await ChosenPlanAsync(gateway, options);
+        var accounts = (await gateway.AccountsAsync(planId)).ToDictionary(account => account.Id, StringComparer.Ordinal);
+        var settings = YnabConfig.Load();
+
+        Console.WriteLine($"{"export",-28} {"bank",12} {"plan",12} {"cleared",12} {"difference",12}");
+
+        foreach (var statement in statements.OrderBy(statement => statement.Label, StringComparer.Ordinal))
+        {
+            var bank = statement.ClosingBalance;
+            var account =
+                settings.Accounts.TryGetValue(statement.Label, out var mapped) && accounts.TryGetValue(mapped, out var found)
+                    ? found
+                    : accounts.Values.FirstOrDefault(candidate => candidate.Name == statement.Label);
+
+            Console.WriteLine(
+                $"{statement.Label,-28} {MoneyText(bank),12} {MoneyText(account?.Balance),12} "
+                    + $"{MoneyText(account?.Cleared),12} {MoneyText(Difference(bank, account?.Balance)),12}"
+            );
+        }
+
+        Console.WriteLine();
+        Console.WriteLine("No request beyond the account list; the bank figure is the export's own balance line.");
+        return 0;
+    }
+
+    private static Money? Difference(Money? bank, Money? plan) =>
+        bank is { } left && plan is { } right ? right - left : null;
+
+    private static string MoneyText(Money? money) => money is { } value ? Amount(value) : "—";
+
     private static string? Token() => Environment.GetEnvironmentVariable(TokenVariable);    private static IYnabGateway Gateway(HttpClient http, Action<string>? say = null, TimeSpan? waitWorthTaking = null) =>
         string.IsNullOrWhiteSpace(Token())
             ? throw new MissingTokenException(TokenVariable)
@@ -513,6 +562,7 @@ public static class YnabCli
         Console.WriteLine("  snapshot   Read the plan into a file all other commands work offline from.");
         Console.WriteLine("  accounts   Print the accounts and balances of a snapshot.");
         Console.WriteLine("  balances   Print the plan's balance per account; one request, no snapshot.");
+        Console.WriteLine("  totals     Bank balance from the exports against the plan, per account; one request.");
         Console.WriteLine("  reconcile  Hold the export against the plan; write the report and the repair plan.");
         Console.WriteLine("  apply      Show the repair plan; with --apply, carry it out and journal it.");
         Console.WriteLine("  import     Import the CSV files a plan wrote, with the account chosen per file.");
