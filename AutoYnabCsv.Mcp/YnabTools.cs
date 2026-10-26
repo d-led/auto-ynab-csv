@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Text;
+using AutoYnabCsv.Common;
 using AutoYnabCsv.Statements;
 using AutoYnabCsv.Ynab.Apply;
 using AutoYnabCsv.Ynab.Categorize;
@@ -20,6 +21,87 @@ namespace AutoYnabCsv.Mcp;
 [McpServerToolType]
 public static class YnabTools
 {
+    /// <summary>The variable the commands that talk to YNAB read; the tools here never do.</summary>
+    private const string TokenVariable = "YNAB_TOKEN";
+
+    [McpServerTool(Name = "ynab_check")]
+    [Description(
+        "Call this first: is the server alive, which build is answering, and can it see what you will "
+            + "ask about? Reports the running build, whether a token is set (never its value), the "
+            + "settings it would use, and — when a folder is given — whether a snapshot is there. "
+            + "Makes no request, so it costs nothing."
+    )]
+    public static string Check(string? snapshotFolder = null, string? settingsFile = null)
+    {
+        var text = new StringBuilder();
+        var settings = YnabConfig.Load(settingsFile);
+
+        text.AppendLine("# connection");
+        text.AppendLine($"server:   {Name()} {BuildStamp.Line(Version(), BuildStamp.Of())}");
+        text.AppendLine(
+            $"token:    {(TokenIsSet() ? $"{TokenVariable} is set" : $"{TokenVariable} is NOT set")}"
+                + " — these tools never need one; the commands that talk to YNAB do."
+        );
+        text.AppendLine(
+            $"settings: {settingsFile ?? YnabConfig.DefaultPath} — {SettingsSummary(settings)}"
+        );
+        text.AppendLine($"snapshot: {SnapshotSummary(snapshotFolder)}");
+        text.AppendLine();
+        text.AppendLine("No request was made: everything above comes from files and the environment.");
+
+        return text.ToString();
+    }
+
+    /// <summary>The version of the assembly answering, so a stale process is visible at a glance.</summary>
+    private static string Version() =>
+        typeof(YnabTools).Assembly.GetName().Version?.ToString(3) ?? "unknown";
+
+    private static string Name() => typeof(YnabTools).Assembly.GetName().Name ?? "auto-ynab-csv-mcp";
+
+    private static bool TokenIsSet() =>
+        !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(TokenVariable));
+
+    /// <summary>What the settings actually set — counted, because the ids are not the point here.</summary>
+    private static string SettingsSummary(YnabConfig settings) =>
+        settings.Plan is null && settings.Accounts.Count == 0
+            ? "nothing set (no file, or an empty one); labels and account ids are still passed per call"
+            : $"plan {(settings.Plan is null ? "missing" : "set")}, {settings.Accounts.Count} account(s), "
+                + $"{settings.OwnIbans.Count} own iban(s), {settings.ExpectedBalances.Count} expected balance(s)";
+
+    private static string SnapshotSummary(string? folder)
+    {
+        if (folder is null)
+        {
+            return "not asked for — pass a folder to check one";
+        }
+
+        if (!File.Exists(Path.Combine(folder, SnapshotStore.FileName)))
+        {
+            return $"no {SnapshotStore.FileName} in {folder} — `auto-ynab-csv ynab snapshot` writes one, "
+                + "and that is the command that costs requests";
+        }
+
+        var snapshot = SnapshotStore.Load(folder);
+
+        return $"{snapshot.PlanName}, read {snapshot.FetchedAt:yyyy-MM-dd HH:mm} UTC "
+            + $"({Ago(snapshot.FetchedAt)}), {snapshot.Accounts.Count} account(s), "
+            + $"{snapshot.Transactions.Count} transaction(s)";
+    }
+
+    /// <summary>How old the snapshot is, in the unit a person would say it in.</summary>
+    private static string Ago(DateTimeOffset moment)
+    {
+        var age = DateTimeOffset.UtcNow - moment;
+
+        return age switch
+        {
+            { TotalMinutes: < 2 } => "just now",
+            { TotalHours: < 1 } => $"{(int)age.TotalMinutes} min ago",
+            { TotalDays: < 1 } => $"{(int)age.TotalHours} h ago",
+            _ => $"{(int)age.TotalDays} day(s) ago",
+        };
+    }
+
     [McpServerTool(Name = "ynab_accounts")]
     [Description(
         "The accounts of a snapshot, with the balance each one holds. Reads the snapshot folder only — "

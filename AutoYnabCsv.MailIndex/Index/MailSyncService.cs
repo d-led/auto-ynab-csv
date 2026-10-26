@@ -87,17 +87,28 @@ public static class MailSyncService
     {
         var rebuildNeeded = forceFull || store.Fingerprint != rules.Fingerprint;
 
-        // A rebuild over an index that had content cleared it, so its holes are of unknown age and
-        // the days since the last sync say nothing about them: the whole mailbox is walked. A first
-        // run, and a routine run, stay inside the span they were asked for.
-        var wholeMailbox = store.RebuildUnfinished || (rebuildNeeded && store.Count > 0);
+        // Only a run that was asked to start over, or one resuming such a run, walks the whole
+        // mailbox. A rule change is not a reason: the pass covers the window it was given, reads
+        // those messages again because their facts are stale, and leaves the rest for the run that
+        // reaches their dates.
+        var wholeMailbox = forceFull || store.RebuildUnfinished;
 
         var window = wholeMailbox
             ? null
             : since
                 ?? (store.LastSyncedAt is { } last ? last.AddDays(-OverlapDays) : null);
 
-        starting?.Invoke(new SyncStart(rebuildNeeded, store.RebuildUnfinished, window, store.Count));
+        starting?.Invoke(
+            new SyncStart(
+                rebuildNeeded,
+                store.RebuildUnfinished,
+                window,
+                store.Count,
+                store.IndexedFrom,
+                store.IndexedThrough,
+                store.LastSyncedAt
+            )
+        );
 
         var walk = EmlxWalker.Walk(storeRoot, window);
 

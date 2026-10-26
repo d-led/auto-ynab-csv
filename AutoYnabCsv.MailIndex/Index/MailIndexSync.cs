@@ -98,7 +98,15 @@ public static class MailIndexSync
         private readonly IReadOnlyDictionary<string, FileState> _known = store.KnownFiles();
         private readonly HashSet<string> _seen = new(StringComparer.Ordinal);
         private readonly List<(EmlxFile File, MailFacts Facts)> _pending = new(BatchSize);
-        private readonly bool _rebuilt = forceFull || store.Fingerprint != rulesFingerprint;
+        private bool _rebuilt = forceFull;
+
+        /// <summary>
+        /// Facts written by other rules are stale, so the messages this pass covers are read again
+        /// even though their files did not change. Those outside the pass keep what they have and are
+        /// refreshed when a run reaches their dates — which is why a rule change no longer costs a
+        /// whole mailbox.
+        /// </summary>
+        private readonly bool _rulesChanged = store.Fingerprint != rulesFingerprint;
 
         private int _indexed;
         private int _skipped;
@@ -184,6 +192,7 @@ public static class MailIndexSync
         /// <summary>A message already read, unchanged in content and time, needs reading no more.</summary>
         private bool Unchanged(EmlxFile file) =>
             !_rebuilt
+            && !_rulesChanged
             && _known.TryGetValue(file.Path, out var state)
             && state.ModifiedTicks == file.LastWriteUtc.UtcTicks
             && state.Length == file.Length;

@@ -33,5 +33,8 @@ public sealed record SyncStart(
     bool Rebuilding,
     bool Resuming,
     DateTimeOffset? Since,
-    int Known
+    int Known,
+    DateTimeOffset? Earliest = null,
+    DateTimeOffset? Latest = null,
+    DateTimeOffset? BuiltAt = null
 );

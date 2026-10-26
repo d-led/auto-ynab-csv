@@ -9,6 +9,103 @@ namespace Tests.Ynab;
 public class YnabToolsTest
 {
     [TestMethod]
+    public void TheCheckNamesTheBuildThatIsAnswering()
+    {
+        var answer = YnabTools.Check(settingsFile: NoSettings());
+
+        StringAssert.Contains(answer, "auto-ynab-csv-mcp", "a stale process should be visible here");
+        StringAssert.Contains(answer, "built ");
+    }
+
+    [TestMethod]
+    [DoNotParallelize] // the environment is the process's, not the test's
+    public void TheCheckSaysTheTokenIsSetWithoutRepeatingItBack()
+    {
+        const string token = "token-that-must-not-be-echoed";
+        var before = Environment.GetEnvironmentVariable("YNAB_TOKEN");
+        Environment.SetEnvironmentVariable("YNAB_TOKEN", token);
+
+        try
+        {
+            var answer = YnabTools.Check(settingsFile: NoSettings());
+
+            StringAssert.Contains(answer, "YNAB_TOKEN is set");
+            StringAssert.Contains(answer, "these tools never need one");
+            Assert.IsFalse(answer.Contains(token, StringComparison.Ordinal), "the value stays in the environment");
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("YNAB_TOKEN", before);
+        }
+    }
+
+    [TestMethod]
+    [DoNotParallelize] // the environment is the process's, not the test's
+    public void AShellWithoutTheTokenIsSaidPlainly()
+    {
+        var before = Environment.GetEnvironmentVariable("YNAB_TOKEN");
+        Environment.SetEnvironmentVariable("YNAB_TOKEN", null);
+
+        try
+        {
+            StringAssert.Contains(YnabTools.Check(settingsFile: NoSettings()), "YNAB_TOKEN is NOT set");
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("YNAB_TOKEN", before);
+        }
+    }
+
+    [TestMethod]
+    public void ASnapshotThatIsThereIsReportedWithWhatItHolds()
+    {
+        var folder = TempFolder();
+        SnapshotStore.Save(Sample.Snapshot(Sample.T("t1", "2026-10-23", -19.71m, "PayPal")), folder);
+
+        var answer = YnabTools.Check(folder, NoSettings());
+
+        StringAssert.Contains(answer, "Household");
+        StringAssert.Contains(answer, "account(s)");
+        StringAssert.Contains(answer, "1 transaction(s)");
+    }
+
+    [TestMethod]
+    public void AFolderWithoutASnapshotSaysWhichCommandWritesOne()
+    {
+        var answer = YnabTools.Check(TempFolder(), NoSettings());
+
+        StringAssert.Contains(answer, "no snapshot.json");
+        StringAssert.Contains(answer, "ynab snapshot", "and that it is the command that costs requests");
+    }
+
+    [TestMethod]
+    public void TheSettingsAreCountedRatherThanQuoted()
+    {
+        var file = Path.Combine(TempFolder(), "accounts.txt");
+        File.WriteAllLines(file, ["plan=00000000-0000-0000-0000-000000000000", "Giro · 1=00000000-0000-0000-0000-000000000001"]);
+
+        var answer = YnabTools.Check(settingsFile: file);
+
+        StringAssert.Contains(answer, "plan set");
+        StringAssert.Contains(answer, "1 account(s)");
+        Assert.IsFalse(answer.Contains("00000000-0000-0000-0000-000000000001"), "ids are not the point of a check");
+    }
+
+    [TestMethod]
+    public void TheCheckSaysOutLoudThatItCostNothing()
+    {
+        StringAssert.Contains(YnabTools.Check(settingsFile: NoSettings()), "No request was made");
+    }
+
+    /// <summary>An empty settings file, so the check never reads the one a person is actually using.</summary>
+    private static string NoSettings()
+    {
+        var file = Path.Combine(TempFolder(), "accounts.txt");
+        File.WriteAllText(file, string.Empty);
+        return file;
+    }
+
+    [TestMethod]
     public void TheAccountsOfASnapshotAreListedWithTheirBalances()
     {
         var folder = TempFolder();

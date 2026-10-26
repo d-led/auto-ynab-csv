@@ -74,23 +74,34 @@ internal static class ConsoleReportProgress
         _status = Announcement(start);
         _reading = string.Empty;
 
+        Say(IndexStats(start));
         Say(_status);
         Alive(true);
     }
 
     /// <summary>
-    /// Why so many messages are read: the rules changed, an earlier rebuild was interrupted, or
-    /// the run really did ask for everything. A whole-store walk with no reason reads as a bug.
+    /// Why so many messages are read: a rebuild was interrupted, or the run really did ask for
+    /// everything. A whole-store walk with no reason reads as a bug.
     /// </summary>
     private static string Announcement(SyncStart start) =>
-        start.Rebuilding
-            ? "Mail:    rebuilding the index — the extraction rules changed since it was built."
-            : start.Resuming
-                ? "Mail:    resuming the rebuild that was interrupted — the whole store is read again."
+        start.Resuming
+            ? "Mail:    resuming the rebuild that was interrupted — the whole store is read again."
+            : start.Rebuilding
+                ? $"Mail:    the rules changed, so the window is read again ({Number(start.Known)} in the index already)."
                 : start.Since is { } since
                     ? $"Mail:    reading messages written since {Day(since)} "
                         + $"({Number(start.Known)} in the index already)."
                     : $"Mail:    reading the whole store ({Number(start.Known)} in the index already).";
+
+    /// <summary>
+    /// What the index already holds, before anything is read: a run that starts by re-reading 80k
+    /// messages should say so next to the numbers that explain why.
+    /// </summary>
+    private static string IndexStats(SyncStart start) =>
+        start.Known == 0 || start.Earliest is not { } from || start.Latest is not { } to
+            ? "Mail:    the index is empty."
+            : $"Mail:    {Number(start.Known)} message(s) indexed, {from:yyyy-MM-dd} … {to:yyyy-MM-dd}"
+                + (start.BuiltAt is { } built ? $", written {built:yyyy-MM-dd HH:mm} UTC." : ", written at an unknown time.");
 
     private static void Sync(SyncProgress progress)
     {

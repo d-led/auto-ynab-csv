@@ -17,7 +17,8 @@ public sealed record ReportContext(
     ReportProgress Progress,
     IMailFinder? Finder = null,
     IMailBodySource? Bodies = null,
-    bool AllowRebuild = true
+    bool AllowRebuild = true,
+    bool FullReindex = false
 )
 {
     public string MailboxRoot => Mailbox?.Root ?? "unavailable";
@@ -36,7 +37,8 @@ public sealed record ReportContext(
         bool searchMail = false,
         string? mailboxRoot = null,
         ReportProgress? progress = null,
-        bool allowRebuild = true
+        bool allowRebuild = true,
+        bool fullReindex = false
     )
     {
         var mailbox = ReadableMailbox(mailboxRoot);
@@ -59,7 +61,8 @@ public sealed record ReportContext(
                 )
                 : null,
             search ? BodySource() : null,
-            allowRebuild
+            allowRebuild,
+            fullReindex
         );
     }
 
@@ -169,6 +172,7 @@ public static class ReportService
                 mailbox.Root,
                 context.Rules,
                 since,
+                forceFull: context.FullReindex,
                 starting: context.Progress.SyncStarting,
                 progress: context.Progress.Sync
             );
@@ -180,24 +184,17 @@ public static class ReportService
     }
 
     /// <summary>
-    /// How far back the store has to be read. New rules mean no stored fact can be trusted, so
-    /// everything is read again; otherwise it is the later of the exports' span and the last
-    /// sync's overlap.
+    /// How far back the store has to be read: the exports' span with a margin, or the overlap since
+    /// the last sync — whichever reaches further. A rule change does not widen it: the window is read
+    /// again under the new rules, and older facts wait for the run that reaches their dates.
     /// </summary>
-    private static DateTimeOffset? WindowFor(ReportContext context, MailRange? range)
-    {
-        if (context.Index.Fingerprint != context.Rules.Fingerprint)
-        {
-            return null;
-        }
-
-        return MailRange.Window(
+    private static DateTimeOffset? WindowFor(ReportContext context, MailRange? range) =>
+        MailRange.Window(
             range,
             context.Index.LastSyncedAt,
             ExportMarginDays,
             MailSyncService.OverlapDays
         );
-    }
 
     /// <summary>The indexed mail, plus what a search turns up when one was asked for.</summary>
     private static (IReadOnlyList<MailFacts> Mails, MailSearchResult Search) Mails(

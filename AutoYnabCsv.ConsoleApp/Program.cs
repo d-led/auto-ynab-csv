@@ -97,7 +97,12 @@ internal static class Program
     /// Converts and reports in one run: the page to look at and the rows to import come out
     /// together, so there is never a half-converted file to import by mistake.
     /// </summary>
-    private static void ConvertCommand(string input, bool search = false, bool noRebuild = false)
+    private static void ConvertCommand(
+        string input,
+        bool search = false,
+        bool noRebuild = false,
+        bool fullReindex = false
+    )
     {
         var inputs = Directory.Exists(input)
             ? ConvertedFiles.ExportsIn(input).ToArray()
@@ -110,14 +115,19 @@ internal static class Program
             return;
         }
 
-        WriteReportFor(inputs, search, allowRebuild: !noRebuild);
+        WriteReportFor(inputs, search, allowRebuild: !noRebuild, fullReindex: fullReindex);
     }
 
     /// <summary>
     /// A conversion is not done until the report exists: the page to look at and the rows to
     /// import belong to the same run.
     /// </summary>
-    private static void WriteReportFor(IReadOnlyList<string> inputs, bool search, bool allowRebuild = true)
+    private static void WriteReportFor(
+        IReadOnlyList<string> inputs,
+        bool search,
+        bool allowRebuild = true,
+        bool fullReindex = false
+    )
     {
         var outputDirectory = ReportLocation.For(inputs);
         var indexPath = MailIndexStore.DefaultPath();
@@ -136,7 +146,8 @@ internal static class Program
             version,
             searchMail: search,
             progress: ConsoleReportProgress.Hooks,
-            allowRebuild: allowRebuild
+            allowRebuild: allowRebuild,
+            fullReindex: fullReindex
         );
 
         Echo(inputs, outputDirectory, search);

@@ -142,7 +142,7 @@ public class MailIndexStoreTest
     }
 
     [TestMethod]
-    public void ChangedRulesRebuildTheIndex()
+    public void ChangedRulesReadTheMessagesAgainWithoutThrowingTheRestAway()
     {
         var file = MessageFile("a.emlx", 10);
         var facts = Facts(file.Path);
@@ -150,8 +150,22 @@ public class MailIndexStoreTest
         MailIndexSync.Run(_store, [file], _ => facts, "rules-1");
         var second = MailIndexSync.Run(_store, [file], _ => facts, "rules-2");
 
+        Assert.AreEqual(1, second.Indexed, "stale facts are read again");
+        Assert.IsFalse(second.Rebuilt, "but the index is not thrown away");
+        Assert.AreEqual(1, _store.Count, "and what was already known stays");
+    }
+
+    [TestMethod]
+    public void AFullRunStillClearsTheIndex()
+    {
+        var file = MessageFile("a.emlx", 10);
+        var facts = Facts(file.Path);
+
+        MailIndexSync.Run(_store, [file], _ => facts, "rules-1");
+        var second = MailIndexSync.Run(_store, [file], _ => facts, "rules-1", forceFull: true);
+
         Assert.IsTrue(second.Rebuilt);
-        Assert.AreEqual(1, second.Indexed);
+        Assert.AreEqual(1, second.Indexed, "everything is read, even what did not change");
         Assert.AreEqual(1, _store.Count);
     }
 
