@@ -52,6 +52,7 @@ public static class YnabCli
                 "balances" => await BalancesAsync(options),
                 "reconcile" => Reconcile(options),
                 "apply" => await ApplyAsync(options),
+                "import" => await ImportAsync(options),
                 "undo" => await UndoAsync(options),
                 _ => Unknown(command),
             };
@@ -355,9 +356,75 @@ public static class YnabCli
         }
     }
 
-    private static string? Token() => Environment.GetEnvironmentVariable(TokenVariable);
+    /// <summary>
+    /// The files a plan wrote, imported with the account chosen here. Two answers stand between the
+    /// review and the first request, <c>--yes</c> skips them only when every account is already named
+    /// with <c>--account</c>, and the rows carry an <c>import_id</c> so the same file twice is a no-op.
+    /// </summary>
+    private static async Task<int> ImportAsync(YnabOptions options)
+    {
+        var folder = options.Required("csv");
+        var files = CsvImport.Read(folder);
 
-    private static IYnabGateway Gateway(HttpClient http, Action<string>? say = null, TimeSpan? waitWorthTaking = null) =>
+        if (files.Count == 0)
+        {
+            Console.Error.WriteLine($"No CSV file with rows in {folder}");
+            return 1;
+        }
+
+        using var http = new HttpClient();
+        var gateway = Gateway(http);
+        var planId = await ChosenPlanAsync(gateway, options);
+        var accounts = await gateway.AccountsAsync(planId);
+        var given = Overrides(options);
+
+        async Task<int> Create(IReadOnlyDictionary<string, string> ids)
+        {
+            var plan = CsvImport.Plan(planId, ids, files);
+            var result = await PlanApplier.ApplyAsync(
+                plan,
+                gateway,
+                options.Or("journal", "artifacts/ynab/journal.jsonl")
+            );
+            Report(result);
+            return result.Clean ? 0 : 1;
+        }
+
+        if (options.Has("yes"))
+        {
+            var unresolved = files
+                .Select(file => file.AccountName)
+                .Where(name => !given.ContainsKey(name))
+                .Distinct(StringComparer.Ordinal)
+                .ToArray();
+
+            if (unresolved.Length > 0)
+            {
+                Console.Error.WriteLine(
+                    $"--yes needs an account for every file; missing: {string.Join(", ", unresolved)}"
+                );
+                return 1;
+            }
+
+            return await Create(given);
+        }
+
+        return await ImportSession.RunAsync(
+            files,
+            accounts,
+            given,
+            ask: prompt =>
+            {
+                Console.Write(prompt);
+                return Console.ReadLine();
+            },
+            say: Console.WriteLine,
+            create: Create,
+            folder: folder
+        );
+    }
+
+    private static string? Token() => Environment.GetEnvironmentVariable(TokenVariable);    private static IYnabGateway Gateway(HttpClient http, Action<string>? say = null, TimeSpan? waitWorthTaking = null) =>
         string.IsNullOrWhiteSpace(Token())
             ? throw new MissingTokenException(TokenVariable)
             : new YnabApi(http, Token()!, Requests(), say: say, waitWorthTaking: waitWorthTaking);
@@ -448,6 +515,7 @@ public static class YnabCli
         Console.WriteLine("  balances   Print the plan's balance per account; one request, no snapshot.");
         Console.WriteLine("  reconcile  Hold the export against the plan; write the report and the repair plan.");
         Console.WriteLine("  apply      Show the repair plan; with --apply, carry it out and journal it.");
+        Console.WriteLine("  import     Import the CSV files a plan wrote, with the account chosen per file.");
         Console.WriteLine("  undo       Reverse what a journal lists; needs --apply.");
         Console.WriteLine();
         Console.WriteLine("Options:");
