@@ -47,7 +47,9 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: published-${{ matrix.os }}-${{ matrix.runtime }}
-          path: ./publish/*/auto-ynab-csv-*.tgz
+          path: |
+            ./publish/*/auto-ynab-csv-*.tgz
+            ./publish/*/auto-ynab-csv-*.zip
 
   publish:
     needs: build
@@ -71,14 +73,16 @@ jobs:
           # attempt at this produced an empty v0.0.5 because the glob matched nothing.
           files: |
             dist/**/*.tgz
+            dist/**/*.zip
           fail_on_unmatched_files: true
           body: |
-            Two programs per archive, neither of which needs .NET installed:
+            Two downloads per platform, neither of which needs .NET installed:
 
-            | file | what it is |
+            | download | what it is |
             | --- | --- |
-            | `auto-ynab-csv` | the command line: convert exports, check a plan against them, apply a repair |
-            | `auto-ynab-csv-mcp` | the MCP server an editor starts: answers about a plan, with no request spent |
+            | `auto-ynab-csv-<version>-<platform>` | `auto-ynab-csv` (the command line) and `auto-ynab-csv-mcp` (the MCP server an editor starts) |
+            | `auto-ynab-csv-desktop-<version>-<platform>` | the window, if you want it |
 
-            Unpack, `chmod +x auto-ynab-csv*` on macOS and Linux, and put both where your shell can find
-            them. An editor starts the server with `"command": "auto-ynab-csv-mcp"`.
+            Windows downloads are `.zip`, the rest `.tgz`. Unpack, `chmod +x auto-ynab-csv auto-ynab-csv-mcp`
+            on macOS and Linux, and put both where your shell can find them. An editor starts the server
+            with `"command": "auto-ynab-csv-mcp"`.

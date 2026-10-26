@@ -446,26 +446,30 @@ to add an extraction rule, see [docs/developer-guide.md](docs/developer-guide.md
 
 ### Download a Release
 
-- pick a [release](https://github.com/d-led/auto-ynab-csv/releases) — `osx-arm64`, `osx-x64`,
-  `linux-x64` or `win-x64`.
-- unpack it and put the two programs where your shell finds them. **Nothing needs to be installed**:
-  each is one self-contained file.
+Pick a [release](https://github.com/d-led/auto-ynab-csv/releases) and the platform you are on
+(`osx-arm64`, `osx-x64`, `linux-x64`, `win-x64`). Windows downloads are `.zip`; the rest are `.tgz`.
+There are two of them, and **nothing needs to be installed** — each program is one self-contained
+file:
 
-  | file | what it is |
-  | --- | --- |
-  | `auto-ynab-csv` | the command line — convert exports, check a plan against them, apply a repair |
-  | `auto-ynab-csv-mcp` | the server an editor starts, so the answers are a question away (below) |
+| download | what you get |
+| --- | --- |
+| `auto-ynab-csv-<version>-<platform>` | `auto-ynab-csv` — the command line — and `auto-ynab-csv-mcp`, the server an editor starts |
+| `auto-ynab-csv-desktop-<version>-<platform>` | the window, for when you would rather click than type |
 
-  ```shell
-  chmod +x auto-ynab-csv auto-ynab-csv-mcp
-  sudo mv auto-ynab-csv auto-ynab-csv-mcp /usr/local/bin/     # or anywhere on your PATH
-  ```
+They are separate because the window is over half the weight, and nobody downloading a command line
+wants a GUI riding along.
 
-- On OSX you might need to clear the quarantine flag on both:
-  `sudo xattr -d com.apple.quarantine /usr/local/bin/auto-ynab-csv*`.
+```shell
+unzip auto-ynab-csv-0.0.6-win-x64.zip            # or: tar xzf auto-ynab-csv-*.tgz
+chmod +x auto-ynab-csv auto-ynab-csv-mcp        # macOS and Linux only
+sudo mv auto-ynab-csv auto-ynab-csv-mcp /usr/local/bin/     # or anywhere on your PATH
+```
 
-A macOS bundle (`AutoYnabCsv.DesktopApp.app`) travels in the same archive, because macOS needs the
-bundle for its window identity and privacy grants.
+On macOS you may need to clear the quarantine flag on both:
+`sudo xattr -d com.apple.quarantine /usr/local/bin/auto-ynab-csv*`.
+
+The desktop download carries `AutoYnabCsv.DesktopApp.app` on macOS — a bundle rather than a bare
+binary, because the window needs one for its identity and its privacy grants.
 
 ### Build Yourself
 

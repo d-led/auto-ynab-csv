@@ -28,7 +28,7 @@
         <PackageLicenseUrl>https://raw.githubusercontent.com/d-led/auto-ynab-csv/refs/heads/main/LICENSE</PackageLicenseUrl>
         <RepositoryUrl>https://github.com/d-led/auto-ynab-csv</RepositoryUrl>
         <RepositoryType>Github</RepositoryType>
-        <Version>0.0.5</Version>
+        <Version>0.0.6</Version>
         <AssemblyVersion>$(Version)</AssemblyVersion>
         <CFBundleShortVersionString>$(Version)</CFBundleShortVersionString>
         <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
