@@ -71,9 +71,13 @@ internal static class Program
 
     private static void VersionCommand()
     {
-        Console.WriteLine(Assembly.GetEntryAssembly()
-        ?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()
-        ?.InformationalVersion);
+        var version = Assembly.GetEntryAssembly()
+            ?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+            ?.InformationalVersion;
+
+        // The build time is said out loud: a binary older than the code is otherwise indistinguishable
+        // from one just built, and the wrong one has been run before.
+        Console.WriteLine(BuildStamp.Line(version ?? "dev", BuildStamp.Of()));
     }
 
     private static void DetectCommand(string input)
@@ -93,7 +97,7 @@ internal static class Program
     /// Converts and reports in one run: the page to look at and the rows to import come out
     /// together, so there is never a half-converted file to import by mistake.
     /// </summary>
-    private static void ConvertCommand(string input, bool search = false)
+    private static void ConvertCommand(string input, bool search = false, bool noRebuild = false)
     {
         var inputs = Directory.Exists(input)
             ? ConvertedFiles.ExportsIn(input).ToArray()
@@ -106,14 +110,14 @@ internal static class Program
             return;
         }
 
-        WriteReportFor(inputs, search);
+        WriteReportFor(inputs, search, allowRebuild: !noRebuild);
     }
 
     /// <summary>
     /// A conversion is not done until the report exists: the page to look at and the rows to
     /// import belong to the same run.
     /// </summary>
-    private static void WriteReportFor(IReadOnlyList<string> inputs, bool search)
+    private static void WriteReportFor(IReadOnlyList<string> inputs, bool search, bool allowRebuild = true)
     {
         var outputDirectory = ReportLocation.For(inputs);
         var indexPath = MailIndexStore.DefaultPath();
@@ -131,7 +135,8 @@ internal static class Program
             rules,
             version,
             searchMail: search,
-            progress: ConsoleReportProgress.Hooks
+            progress: ConsoleReportProgress.Hooks,
+            allowRebuild: allowRebuild
         );
 
         Echo(inputs, outputDirectory, search);
