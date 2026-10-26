@@ -13,7 +13,7 @@
     <AssemblyName>auto-ynab-csv-mcp</AssemblyName>
     <PublishSingleFile>true</PublishSingleFile>
     <InvariantGlobalization>true</InvariantGlobalization>
-    <Version>0.0.6</Version>
+    <Version>0.1.0</Version>
   </PropertyGroup>
 
   <ItemGroup>
