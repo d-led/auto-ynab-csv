@@ -181,7 +181,7 @@ public static class EntryEnricher
         string.Join(
             Separator,
             memo.Split(Separator)
-                .Select(part => Squash(part.Trim(' ', ',', ';', '·')))
+                .Select(part => Squash(part.Trim(' ', ',', ';', '·', ':')))
                 .Where(part => part.Length > 0)
         );
 

@@ -37,6 +37,42 @@ public class MemoNoiseTest
     }
 
     [TestMethod]
+    public void AnAddressIsSomebodysDataAndNeverBelongsToAMemo()
+    {
+        var cleaned = MemoNoise.Without("E-mail Address: someone@example.com · Kopfhörer");
+
+        Assert.IsFalse(cleaned.Contains('@'), $"no address is left: {cleaned}");
+        StringAssert.Contains(cleaned, "Kopfhörer", "and the purchase stays");
+    }
+
+    [TestMethod]
+    public void TheSentenceAfterTheOrderNumberGoesAsASentenceNotItsTail()
+    {
+        var cleaned = MemoNoise.Without(
+            "Kopfhörer · You can view the status of your order or make changes to it by visiting Your Orders · geliefert"
+        );
+
+        Assert.IsFalse(cleaned.Contains("view the status", StringComparison.OrdinalIgnoreCase));
+        Assert.IsFalse(cleaned.Contains("visiting", StringComparison.OrdinalIgnoreCase), $"tail left: {cleaned}");
+        StringAssert.Contains(cleaned, "Kopfhörer");
+    }
+
+    [TestMethod]
+    public void TheProductCardsOwnLabelsGo()
+    {
+        Assert.AreEqual("Kopfhörer", MemoNoise.Without("Condition: New Kopfhörer").Trim());
+        Assert.AreEqual("Kopfhörer", MemoNoise.Without("Kopfhörer Shipment 2 of 2").Trim());
+    }
+
+    [TestMethod]
+    public void AnOrderNumberIsEvidenceAndStays()
+    {
+        const string reference = "Order 028-3613296-4739534";
+
+        Assert.AreEqual(reference, MemoNoise.Without(reference));
+    }
+
+    [TestMethod]
     public void TwoWordsEitherSideOfARemovedPhraseAreNotFused()
     {
         var cleaned = MemoNoise.Without("Kopfhörer Transaktionsdetails geliefert");
